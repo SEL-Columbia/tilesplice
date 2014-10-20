@@ -1,5 +1,5 @@
 var map = L.map('map').setView([20.9, 96.15], 12);
-var myanmar_layer = L.tileLayer('myanmar_copy/{z}/{x}/{y}.png', {
+var myanmar_layer = L.tileLayer('myanmar/{z}/{x}/{y}.png', {
         minZoom: 12,
         maxZoom: 18,
         attribution: 'modilabs',
