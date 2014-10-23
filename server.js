@@ -1,13 +1,91 @@
 var http = require("http"),
     url = require("url"),
     path = require("path"),
-    fs = require("fs")
+    fs = require("fs"),
+    exec = require('child_process').exec,
     port = process.argv[2] || 8888;
  
 http.createServer(function(request, response) {
 
-    var uri = url.parse(request.url).pathname;
+    var url_parts = url.parse(request.url, true);
+    var uri = url_parts.pathname;
+    var query = url_parts.query;
+
+    console.log(uri);
+
     var filename = path.join(process.cwd(), uri);
+
+    if (uri === "/clip.tif") {
+        console.log("request");
+
+        var clipper = "python clippers/range_clipper.py";
+        var geo_tif = "myanmar.tif";
+        var top_x = "200821.400",  
+            top_y = "2316187.200", 
+            bot_x = "204283.900", 
+            bot_y = "2313922.700";
+
+        if (JSON.stringify(query) !== "{}") {
+            console.log(query);
+            top_x = query.top_x;
+            top_y = query.top_y;
+            bot_x = query.bot_x;
+            bot_y = query.bot_y;
+        }
+
+        var geo_name = geo_tif.split(".")[0];
+        var out_tif = geo_name 
+                        + ".out." 
+                        + Math.floor(top_x) 
+                        +"." 
+                        + Math.floor(top_y)
+                        + ".tif"; 
+
+        var command = clipper 
+                + " " + geo_tif
+                + " " + top_x
+                + " " + top_y
+                + " " + bot_x
+                + " " + bot_y;
+                
+        console.log(command);
+        console.log(command);
+        console.log(command);
+
+        exec(command, function(err, stdout, stderr) {
+                
+                if (err) {
+                    response.writeHead(404, {"Content-Type": "text/plain"});
+                    response.write("BUSTEDDD \n" + JSON.stringify(err));
+                    response.end();
+                    return;
+                }
+
+                console.log(err);
+                console.log(stdout);
+                console.log(stderr);
+                console.log(geo_tif);
+                console.log(out_tif);
+
+                fs.readFile(out_tif, "binary", function(err, tif) {
+
+                    if(err) {        
+                        response.writeHead(500, {"Content-Type": "text/plain"});
+                        response.write(err + "\n");
+                        response.end();
+                        return;
+                    }
+
+                    response.writeHead(200, {'Content-Type': 'image/tif'});
+                    //response.write(stdout);
+                    //response.write("Image is being downloaded\n");
+                    response.end(tif, "binary");
+                    //response.end();
+                });
+            });
+
+        return;
+    }
 
     fs.exists(filename, function(exists) {
         if(!exists) {

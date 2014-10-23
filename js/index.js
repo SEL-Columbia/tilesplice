@@ -33,7 +33,7 @@ var point = new Proj4js.Point(96.15, 20.9);
 var endpoint = new Proj4js.Point(200821.400, 2316187.200);
 
 
-// GDAL INFO
+// GDAL INFO totally useless right now
 var outputProj = 'PROJCS["WGS 84 / UTM zone 47N",'
     + 'GEOGCS["WGS 84",'
     + '    DATUM["WGS_1984",'
@@ -61,7 +61,39 @@ map.on('draw:created', function(e) {
     var layer = e.layer;
     console.log(layer._latlngs);
 
-    //map.addLayer(layer);
+    // point
+    var ptop = layer._latlngs[1];
+    var pbot = layer._latlngs[3];
+
+    L.marker([ptop.lat, ptop.lng], {color: '#123456'}).addTo(map)
+    L.marker([pbot.lat, pbot.lng], {}).addTo(map)
+ 
+    // projected point
+    var pptop = new Proj4js.Point(ptop.lng, ptop.lat);
+    var ppbot = new Proj4js.Point(pbot.lng, pbot.lat);
+
+    console.log(pptop, ppbot);
+    Proj4js.transform(source, dest, pptop);
+    Proj4js.transform(source, dest, ppbot);
+    console.log(pptop, ppbot);
+
+    var get = "?top_x=" + pptop.x 
+            + "&top_y=" + pptop.y
+            + "&bot_x=" + ppbot.x
+            + "&bot_y=" + ppbot.y;
+
+    var req = null;
+    req = new XMLHttpRequest();
+    req.onreadystatechange = function() {
+        if (req.readyState == 4) {
+            document.body.innerHTML = req.responseText;
+        }
+    }
+
+    req.open("GET", "/clip.tif" + get, true);
+    req.send();
+    console.log(req.responseText);
+    map.addLayer(layer);
 });
 
 var marker = L.marker([20.9, 96.15], {
