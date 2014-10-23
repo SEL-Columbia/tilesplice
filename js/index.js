@@ -82,6 +82,7 @@ map.on('draw:created', function(e) {
             + "&bot_x=" + ppbot.x
             + "&bot_y=" + ppbot.y;
 
+
     var req = null;
     req = new XMLHttpRequest();
     req.onreadystatechange = function() {
