@@ -25,12 +25,14 @@ http.createServer(function(request, response) {
             bot_x = "204283.900", 
             bot_y = "2313922.700";
 
+        // TODO get rid of the shit above
         if (JSON.stringify(query) !== "{}") {
             console.log(query);
             top_x = query.top_x;
             top_y = query.top_y;
             bot_x = query.bot_x;
             bot_y = query.bot_y;
+            geo_tiff = query.image + ".tif";
         }
 
         var geo_name = geo_tiff.split(".")[0];

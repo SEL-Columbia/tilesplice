@@ -6,6 +6,21 @@ var myanmar_layer = L.tileLayer('../myanmar/{z}/{x}/{y}.png', {
         tms: true    //this is important
 })
 
+var myanmar_feb_layer = L.tileLayer('../myanmar_feb/{z}/{x}/{y}.png', {
+        minZoom: 12,
+        maxZoom: 18,
+        attribution: 'modilabs',
+        tms: true    //this is important
+})
+
+var myanmar_jun_layer = L.tileLayer('../myanmar_jun/{z}/{x}/{y}.png', {
+        minZoom: 12,
+        maxZoom: 18,
+        attribution: 'modilabs',
+        tms: true    //this is important
+})
+
+
 var osm_layer = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
         minZoom: 1,
         maxZoom: 18
@@ -17,8 +32,9 @@ var g_layer = L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
 })
 
 var baseMaps = {
-    "Myanmar": myanmar_layer,
-    "Open Street Map": osm_layer
+    "myanmar": myanmar_layer,
+    "myanmar_feb": myanmar_feb_layer,
+    "myanmar_jun": myanmar_jun_layer
 };
 
 // ma map
@@ -58,23 +74,33 @@ var locale = 'myanmar';
 
 var localeOptions = {
     'myanmar': {
+        layer: myanmar_layer,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
         cen: [20.9, 96.15],
         zom: 12
     }, 
-    'nigeria': {
+//    'myanmar_jan': {
+//        layer: myanmar_layer,
+//        src: new Proj4js.Proj('EPSG:4326'),
+//        dest: new Proj4js.Proj('EPSG:32647'),
+//        cen: [21.82838, 96.39941],
+//        zom: 12
+//    }, 
+    'myanmar_feb': {
+        layer: osm_layer,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        cen: [20.9, 96.15],
+        cen: [20.902, 96.157],
         zom: 12
     }, 
-    'toronto': {
+    'myanmar_jun': {
+        layer: osm_layer,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        cen: [20.9, 96.15],
+        cen: [20.941, 96.090],
         zom: 12
-    }, 
+    }
 };
 
 
@@ -82,6 +108,9 @@ var localeOptions = {
 map.on('draw:created', function(e) {
     console.log(e);
     console.log(this);
+
+    var source = localeOptions[locale].src;
+    var dest = localeOptions[locale].dest;
 
     var type = e.layerType;
     var layer = e.layer;
@@ -135,46 +164,16 @@ map.on('draw:created', function(e) {
     map.addLayer(layer);
 });
 
-var legendControl = L.Control.extend({
-    options: {
-        position: 'topright'
-    },
-    onAdd: function(map) {
-        this._initLegend();
-        return this._div;
-    },
-    _initLegend: function () {
-        var className = 'Layer options';
-        this._div = L.DomUtil.create('div', className);
-
-        var content = '<select id = "legendSelect" style="width: 100px">' 
-            + '<option value = "myanmar">Myanmar</option>' 
-            + '<option value = "nigeria">Nigeria</option>' 
-            + '<option value = "toronto">Toronto</option>'
-            + '</select>';
-
-        this._div.innerHTML = content;
-        this._select = legend._div.firstChild;
-        this._select.onchange = legend.onChange;
-        //this._div.firstChild.onmousedown = this._div.firstChild.ondblclick = L.DomEvent.stopPropagation;
-    },
-    
-    onChange: function(e, val) {
-        console.log(e);
-        var sInd = this.selectedIndex;
-        var sOpt = this.selectedOptions.item().value;
-        var locale = sOpt;
-        var cen = localeOptions[sOpt].cen;
-        var zom = localeOptions[sOpt].zom;
+// radio button events
+map.on('baselayerchange', function(e) {
+        locale = e.name;
+        var layer = e.layer;
+        var cen = localeOptions[locale].cen;
+        var zom = localeOptions[locale].zom;
         map.setView(cen, zom);
-        console.log(locale);
-    }
+
+        window.lay = layer;
+        window.me = name;
 });
 
-//var legend = new legendControl()
-//legend.addTo(map);
-
-
-//osm_layer.addTo(map);
-//myanmar_layer.addTo(map);
 window.map = map;
