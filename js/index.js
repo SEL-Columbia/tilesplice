@@ -26,12 +26,12 @@ var source = new Proj4js.Proj('EPSG:4326');
 
 // Trasverse Mercator
 var dest = new Proj4js.Proj('EPSG:32647');  
+
 // src , dest , point - > our projection
 var point = new Proj4js.Point(96.15, 20.9);
 
 // dest, src, endpoint -> lat/lng
 var endpoint = new Proj4js.Point(200821.400, 2316187.200);
-
 
 // GDAL INFO totally useless right now
 var outputProj = 'PROJCS["WGS 84 / UTM zone 47N",'
@@ -55,22 +55,47 @@ var outputProj = 'PROJCS["WGS 84 / UTM zone 47N",'
 
 map.addControl(drawControl);
 
+// Transverse Mercator UTM North 32647
+var myanmar_layer = L.tileLayer('../myanmar/{z}/{x}/{y}.png', {
+        minZoom: 12,
+        maxZoom: 18,
+        attribution: 'modilabs',
+        tms: true    //this is important
+})
+
+var osm_layer = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+        minZoom: 1,
+        maxZoom: 18
+})
+
+var g_layer = L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        minZoom: 1,
+        maxZoom: 18
+})
+
 map.on('draw:created', function(e) {
     console.log(e);
+    console.log(this);
+
     var type = e.layerType;
     var layer = e.layer;
-    console.log(layer._latlngs);
+    var latlngs = layer.getLatLngs();
 
+    window.layer = layer;
+    window.th = this;
     // point
-    var ptop = layer._latlngs[1];
-    var pbot = layer._latlngs[3];
+    var ptop = latlngs[1];
+    var pbot = latlngs[3];
 
-    L.marker([ptop.lat, ptop.lng], {color: '#123456'}).addTo(map)
-    L.marker([pbot.lat, pbot.lng], {}).addTo(map)
- 
     // projected point
     var pptop = new Proj4js.Point(ptop.lng, ptop.lat);
     var ppbot = new Proj4js.Point(pbot.lng, pbot.lat);
+
+    //pop uo
+    var popup = L.popup()
+        .setLatLng([(ptop.lat + pbot.lat)/2, (ptop.lng + pbot.lng)/2])
+        .setContent('<p> Clipping GeoTiff ... </p>')
+        .addTo(map);
 
     console.log(pptop, ppbot);
     Proj4js.transform(source, dest, pptop);
@@ -87,7 +112,15 @@ map.on('draw:created', function(e) {
     req = new XMLHttpRequest();
     req.onreadystatechange = function() {
         if (req.readyState == 4) {
-            document.body.innerHTML = req.responseText;
+            //document.body.innerHTML = req.responseText;
+            popup.setContent('<a href="' + req.responseText 
+                            + '"> Download '
+                            + '(' + Math.floor(ptop.lat*100)/100 + ', ' 
+                            + Math.floor(ptop.lng*100)/100 + ')' 
+                            + ' to '
+                            + '(' + Math.floor(pbot.lat*100)/100 + ', ' 
+                            + Math.floor(pbot.lng*100)/100 + ')' 
+                            + '</a>');
         }
     }
 
@@ -97,6 +130,7 @@ map.on('draw:created', function(e) {
     map.addLayer(layer);
 });
 
+// quick way finder, hard to find tile region when zoomed out
 var marker = L.marker([20.9, 96.15], {
     clickable: true,
     draggable: true
@@ -109,25 +143,6 @@ var marker = L.marker([20.9, 96.15], {
             //    .setContent("<p>" + e.latlng +"</p>");
         });
 
-
-// Transverse Mercator UTM North 32647
-var myanmar_layer = L.tileLayer('../myanmar/{z}/{x}/{y}.png', {
-        minZoom: 12,
-        maxZoom: 18,
-        attribution: 'modilabs',
-        tms: true    //this is important
-})
-
-var osm_layer = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-        minZoom: 1,
-        maxZoom: 18
-})
-
-var g_layer =
-L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        minZoom: 1,
-        maxZoom: 18
-})
 
 //osm_layer.addTo(map);
 g_layer.addTo(map);

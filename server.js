@@ -19,7 +19,7 @@ http.createServer(function(request, response) {
         console.log("request");
 
         var clipper = "python clippers/range_clipper.py";
-        var geo_tif = "myanmar.tif";
+        var geo_tiff = "myanmar.tif";
         var top_x = "200821.400",  
             top_y = "2316187.200", 
             bot_x = "204283.900", 
@@ -33,8 +33,8 @@ http.createServer(function(request, response) {
             bot_y = query.bot_y;
         }
 
-        var geo_name = geo_tif.split(".")[0];
-        var out_tif = geo_name 
+        var geo_name = geo_tiff.split(".")[0];
+        var out_tiff = geo_name 
                         + ".out." 
                         + Math.floor(top_x) 
                         +"." 
@@ -42,7 +42,7 @@ http.createServer(function(request, response) {
                         + ".tif"; 
 
         var command = clipper 
-                + " " + geo_tif
+                + " " + geo_tiff
                 + " " + top_x
                 + " " + top_y
                 + " " + bot_x
@@ -64,23 +64,21 @@ http.createServer(function(request, response) {
                 console.log(err);
                 console.log(stdout);
                 console.log(stderr);
-                console.log(geo_tif);
-                console.log(out_tif);
+                console.log(geo_tiff);
+                console.log(out_tiff);
 
-                fs.readFile(out_tif, "binary", function(err, tif) {
+                fs.exists(out_tiff, function(exists) {
 
-                    if(err) {        
+                    if(!exists) {        
                         response.writeHead(500, {"Content-Type": "text/plain"});
-                        response.write(err + "\n");
+                        response.write("Could not create geo-tiff\n");
                         response.end();
                         return;
                     }
 
-                    response.writeHead(200, {'Content-Type': 'image/tif'});
-                    //response.write(stdout);
-                    //response.write("Image is being downloaded\n");
-                    response.end(tif, "binary");
-                    //response.end();
+                    response.writeHead(200, {'Content-Type': 'text/plain'});
+                    response.write(out_tiff);
+                    response.end();
                 });
             });
 
