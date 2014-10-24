@@ -85,6 +85,7 @@ http.createServer(function(request, response) {
         return;
     }
 
+    // SERVE
     fs.exists(filename, function(exists) {
         if(!exists) {
             response.writeHead(404, {"Content-Type": "text/plain"});
