@@ -58,7 +58,7 @@ var drawControl = new L.Control.Draw({
             polygon: false,
             rectangle: {},
             circle: false,
-            marker: false
+            marker: true
           },
     edit: {
             featureGroup: drawnItems
@@ -114,53 +114,60 @@ map.on('draw:created', function(e) {
 
     var type = e.layerType;
     var layer = e.layer;
-    var latlngs = layer.getLatLngs();
 
-    // point
-    var ptop = latlngs[1];
-    var pbot = latlngs[3];
+    if (type === 'rectangle') {
+        var latlngs = layer.getLatLngs();
 
-    // projected point
-    var pptop = new Proj4js.Point(ptop.lng, ptop.lat);
-    var ppbot = new Proj4js.Point(pbot.lng, pbot.lat);
+        // point
+        var ptop = latlngs[1];
+        var pbot = latlngs[3];
 
-    //pop uo
-    var popup = L.popup()
-        .setLatLng([(ptop.lat + pbot.lat)/2, (ptop.lng + pbot.lng)/2])
-        .setContent('<p> Clipping GeoTiff ... </p>')
-        .addTo(map);
+        // projected point
+        var pptop = new Proj4js.Point(ptop.lng, ptop.lat);
+        var ppbot = new Proj4js.Point(pbot.lng, pbot.lat);
 
-    console.log(pptop, ppbot);
-    Proj4js.transform(source, dest, pptop);
-    Proj4js.transform(source, dest, ppbot);
-    console.log(pptop, ppbot);
+        //pop uo
+        var popup = L.popup()
+            .setLatLng([(ptop.lat + pbot.lat)/2, (ptop.lng + pbot.lng)/2])
+            .setContent('<p> Clipping GeoTiff ... </p>')
+            .addTo(map);
 
-    var get = "?top_x=" + pptop.x 
-            + "&top_y=" + pptop.y
-            + "&bot_x=" + ppbot.x
-            + "&bot_y=" + ppbot.y
-            + "&image=" + locale;
+        console.log(pptop, ppbot);
+        Proj4js.transform(source, dest, pptop);
+        Proj4js.transform(source, dest, ppbot);
+        console.log(pptop, ppbot);
+
+        var get = "?top_x=" + pptop.x 
+                + "&top_y=" + pptop.y
+                + "&bot_x=" + ppbot.x
+                + "&bot_y=" + ppbot.y
+                + "&image=" + locale;
 
 
-    var req = null;
-    req = new XMLHttpRequest();
-    req.onreadystatechange = function() {
-        if (req.readyState == 4) {
-            //document.body.innerHTML = req.responseText;
-            popup.setContent('<a href="' + req.responseText 
-                            + '"> Download '
-                            + '(' + ptop.lat + ', ' 
-                            + ptop.lng + ')' 
-                            + ' to '
-                            + '(' + pbot.lat + ', ' 
-                            + pbot.lng + ')' 
-                            + '</a>');
+        var req = null;
+        req = new XMLHttpRequest();
+        req.onreadystatechange = function() {
+            if (req.readyState == 4) {
+                //document.body.innerHTML = req.responseText;
+                popup.setContent('<a href="' + req.responseText 
+                                + '"> Download '
+                                + '(' + ptop.lat + ', ' 
+                                + ptop.lng + ')' 
+                                + ' to '
+                                + '(' + pbot.lat + ', ' 
+                                + pbot.lng + ')' 
+                                + '</a>');
+            }
         }
+
+        req.open("GET", "/clip.tif" + get, true);
+        req.send();
+        console.log(req.responseText);
+    } else if (type === 'marker') {
+
+        console.log(layer);
     }
 
-    req.open("GET", "/clip.tif" + get, true);
-    req.send();
-    console.log(req.responseText);
     map.addLayer(layer);
 });
 
