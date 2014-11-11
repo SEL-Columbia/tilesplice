@@ -18,7 +18,7 @@ http.createServer(function(request, response) {
     if (uri === "/clip.tif") {
         console.log("request");
 
-        var clipper = "python clippers/range_clipper.py";
+        var clipper = "python2 clippers/range_clipper.py";
         var geo_tiff = "myanmar.tif";
         var top_x = "200821.400",  
             top_y = "2316187.200", 
