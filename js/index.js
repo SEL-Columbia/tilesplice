@@ -88,13 +88,11 @@ map.on('draw:created', function(e) {
             if (req.readyState == 4) {
                 //document.body.innerHTML = req.responseText;
                 popup.setContent('<a href="' + req.responseText 
-                                + '"> Download '
-                                + '(' + ptop.lat + ', ' 
-                                + ptop.lng + ')' 
-                                + ' to '
-                                + '(' + pbot.lat + ', ' 
-                                + pbot.lng + ')' 
+                                + '">'
+                                + req.responseText
                                 + '</a>');
+
+                geojsondiv.innerHTML += "<p>" + req.responseText + "</p>";
             }
         }
 
@@ -111,19 +109,36 @@ map.on('draw:created', function(e) {
 var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
     var validMarkers = [];
     var counter = 0;
-    geojsondiv.innerHTML = "";
+
+    var req = null;
+    req = new XMLHttpRequest();
+    req.onreadystatechange = function() {
+    if (req.readyState == 4) {
+        //document.body.innerHTML = req.responseText;
+        popup.setContent('<a href="' + req.responseText 
+              + '">'
+              + req.responseText
+              + '</a>');
+        }
+     }
+
+
     drawnItems.eachLayer(function(layer) {
         var latlng = layer._latlng;
         if  (   (latlng.lng < bot_x && latlng.lng > top_x)
             &&  (latlng.lat < top_y && latlng.lat > bot_y) ) {
 
-            var geopoint = JSON.stringify(layer.toGeoJSON())
+            var geopoint = "" + latlng.lat + "," + latlng.lat + "Label: " + counter++;
             geojsondiv.innerHTML += "<p>" + geopoint + "</p>";
             validMarkers.push();
         }
 
         console.log(validMarkers);
     });
+
+   //req.open("GET", "/labels" + get, true);
+   //req.send();
+
 }
 // radio button events
 map.on('baselayerchange', function(e) {
