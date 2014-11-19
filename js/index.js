@@ -3,6 +3,12 @@ var g_layer = L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         maxZoom: 18
 })
 
+var l_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        minZoom: 1,
+        maxZoom: 18,
+})
+
+
 // ma map
 var map = L.map('map', { 
     center: [20.9, 96.15],
@@ -12,7 +18,7 @@ var map = L.map('map', {
 var drawnItems = new L.FeatureGroup();
 drawnItems.addTo(map);
 
-g_layer.addTo(map);
+l_layer.addTo(map);
 initial_layer.addTo(map);
 L.control.layers(baseMaps).addTo(map);
 
@@ -86,13 +92,13 @@ map.on('draw:created', function(e) {
         req = new XMLHttpRequest();
         req.onreadystatechange = function() {
             if (req.readyState == 4) {
-                //document.body.innerHTML = req.responseText;
                 popup.setContent('<a href="' + req.responseText 
                                 + '">'
                                 + req.responseText
                                 + '</a>');
 
-                geojsondiv.innerHTML += "<p>" + req.responseText + "</p>";
+                var url = "http://" + window.location.host + "/" + req.responseText;
+                geojsondiv.innerHTML += "<p>" + url + "</p>";
             }
         }
 
@@ -114,7 +120,6 @@ var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
     req = new XMLHttpRequest();
     req.onreadystatechange = function() {
     if (req.readyState == 4) {
-        //document.body.innerHTML = req.responseText;
         popup.setContent('<a href="' + req.responseText 
               + '">'
               + req.responseText
@@ -128,7 +133,7 @@ var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
         if  (   (latlng.lng < bot_x && latlng.lng > top_x)
             &&  (latlng.lat < top_y && latlng.lat > bot_y) ) {
 
-            var geopoint = "" + latlng.lat + "," + latlng.lat + "Label: " + counter++;
+            var geopoint = "" + latlng.lat + ", " + latlng.lat + ", Label: " + counter++;
             geojsondiv.innerHTML += "<p>" + geopoint + "</p>";
             validMarkers.push();
         }
