@@ -9,27 +9,8 @@ import numpy
 
 gdal.AllRegister()
 
-def readGeoImage(image, rows, cols, bands):
-    pass
-        
-    
-if __name__ == '__main__':
+def range_clip(top_x, top_y, bot_x, bot_y, raster):
 
-    if len(sys.argv) < 6:
-        print("Usage %s raster.tif top_x top_y bot_x bot_y" % sys.argv[0])
-        sys.exit(1)
-    
-    
-    raster = sys.argv[1]
-
-    top_x = float(sys.argv[2]) 
-    top_y = float(sys.argv[3]) 
-    bot_x = float(sys.argv[4])  
-    bot_y = float(sys.argv[5]) 
-    
-    
-    print("Clipping %s, bounding box btwn (%d, %d) and (%d, %d)." %(raster, top_x, top_y, bot_x, bot_y))
-    
     image = gdal.Open(raster, GA_ReadOnly);
     if image is None:
         print("Could not open image")
@@ -69,10 +50,11 @@ if __name__ == '__main__':
     
     
     print(((bot_x - top_x)*(1.0/float(pxW))),((bot_y - top_y)*(1.0/float(pxH))))
+    out_tiff = "%s.out.%d.%d.tif" %(raster.split(".")[0], top_x, top_y)
     bandList = numpy.array(bandList)
     driver = gdal.GetDriverByName('GTiff');
     dataset = driver.Create(
-            "%s.out.%d.%d.tif" %(raster.split(".")[0], top_x, top_y),
+            out_tiff,
             int((bot_x - top_x)*(1.0/float(pxW))) + 1,
             int((bot_y - top_y)*(1.0/float(pxH))) + 1,
             4,
@@ -106,3 +88,26 @@ if __name__ == '__main__':
     #Gdalnumeric.SaveArray(bandList[:,chunkx:chunkxUP,chunky:chunkyUP], 
     #        "%s.out.%d.%d.tif" %(raster, j, i), 
     #        format="GTiff", prototype=raster)
+
+    return out_tiff
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 6:
+        print("Usage %s raster.tif top_x top_y bot_x bot_y" % sys.argv[0])
+        sys.exit(1)
+    
+    
+    raster = sys.argv[1]
+
+    top_x = float(sys.argv[2]) 
+    top_y = float(sys.argv[3]) 
+    bot_x = float(sys.argv[4])  
+    bot_y = float(sys.argv[5]) 
+    
+    
+    print("Clipping %s, bounding box btwn (%d, %d) and (%d, %d)." %(raster, top_x, top_y, bot_x, bot_y))
+    out = range_clip(top_x, top_y, bot_x, bot_y, raster);
+    print("Generated %s" %out)
+    
+    
