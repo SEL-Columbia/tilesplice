@@ -1,3 +1,7 @@
 myanmar/
-myanmar_copy/
+tilesplice/
+myanmar_*/
 *.tif
+*.pyc
+clippers/*.pyc
+test.*
