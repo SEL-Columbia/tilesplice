@@ -24,4 +24,6 @@
 #geojson {
     margin: 0px auto;
     width: 100%;
+    font-size: 12px;
+    word-wrap: break-word;
 }
