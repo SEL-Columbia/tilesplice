@@ -64,13 +64,15 @@ map.on('draw:created', function(e) {
         var pbot = latlngs[3];
 
         // labels
-        dumpMarks(ptop.lng, ptop.lat, pbot.lng, pbot.lat);
-        
+        window.setTimeout(
+            dumpMarks(ptop.lng, ptop.lat, pbot.lng, pbot.lat),
+        100)
+            
         // projected point
         var pptop = new Proj4js.Point(ptop.lng, ptop.lat);
         var ppbot = new Proj4js.Point(pbot.lng, pbot.lat);
 
-        //pop uo
+        //pop up
         var popup = L.popup({closeOnClick: false})
             .setLatLng([(ptop.lat + pbot.lat)/2, (ptop.lng + pbot.lng)/2])
             .setContent('<p> Clipping GeoTiff ... </p>')
@@ -96,10 +98,10 @@ map.on('draw:created', function(e) {
                                 + '">'
                                 + req.responseText
                                 + '</a>');
-
                 var url = "http://" + window.location.host + "/" + req.responseText;
                 geojsondiv.innerHTML += "<p>" + url + "</p>";
             }
+
         }
 
         req.open("GET", "/clip.tif" + get, true);
@@ -113,38 +115,43 @@ map.on('draw:created', function(e) {
 });
 
 var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
-    var validMarkers = [];
+    var validMarkers = [["POINT", "MAP", "LAT", "LNG"]];
     var counter = 0;
 
     var req = null;
     req = new XMLHttpRequest();
     req.onreadystatechange = function() {
-    if (req.readyState == 4) {
-        popup.setContent('<a href="' + req.responseText 
-              + '">'
-              + req.responseText
-              + '</a>');
+        if (req.readyState == 4) {
+
+            var url1 = "http://" + window.location.host + "/" + req.responseText + ".dbf";
+            var url2 = "http://" + window.location.host + "/" + req.responseText + ".sbx";
+            var url3 = "http://" + window.location.host + "/" + req.responseText + ".shp";
+            geojsondiv.innerHTML += "<p>" + url1 + "</p>";
+            geojsondiv.innerHTML += "<p>" + url2 + "</p>";
+            geojsondiv.innerHTML += "<p>" + url3 + "</p>";
+
         }
-     }
-
-
+    }
     drawnItems.eachLayer(function(layer) {
         var latlng = layer._latlng;
         if  (   (latlng.lng < bot_x && latlng.lng > top_x)
             &&  (latlng.lat < top_y && latlng.lat > bot_y) ) {
 
-            var geopoint = "" + latlng.lat + ", " + latlng.lat + ", Label: " + counter++;
-            geojsondiv.innerHTML += "<p>" + geopoint + "</p>";
-            validMarkers.push();
+            var geopoint = ["POINT", locale, latlng.lat, latlng.lng]
+            validMarkers.push(geopoint);
         }
 
         console.log(validMarkers);
     });
 
-   //req.open("GET", "/labels" + get, true);
-   //req.send();
+    if (validMarkers.length > 1) {
+        req.open("POST", "/upload.csv", true);
+        console.log(JSON.stringify({'csv': validMarkers}));
+        req.send(JSON.stringify({'csv': validMarkers}));
+    }
 
 }
+
 // radio button events
 map.on('baselayerchange', function(e) {
         locale = e.name;

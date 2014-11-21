@@ -8,7 +8,7 @@ POLYGON, MAP_NAME, PT1 ... PTN
 
 Outputs a shapefile
 '''
-def csvToShapefile(csv_file_name, shp_file_name):
+def csvToShapefile(csv_file_name, shp_file_name, fromArray=False):
 
     ''' 
     Generate the shape file from the polygon data
@@ -37,6 +37,31 @@ def csvToShapefile(csv_file_name, shp_file_name):
             print row
 
         print header, hasMeta
+
+    if fromArray:
+        csv_reader = csv_file_name
+        header = csv_reader[0]
+        shp_type = header[0]; # POINT POLY?
+        csv_len = len(header) - 2
+        shp_w = None
+        csv_reader.remove(header);
+
+        # Determine writer type
+        if shp_type == "POLYGON":
+            assert(csv_len > 2)
+            shp_w = shp.Writer(shp.POLYGON)
+            return writePoly(shp_w, csv_reader, csv_len)
+
+        if shp_type == "POINT":
+            assert( (csv_len == 2) or (csv_len == 3) )
+            shp_w = shp.Writer(shp.POINT)
+            writePoint(shp_w, csv_reader, csv_len==3)
+
+        if not shp_w:
+            return 1
+
+        shp_w.save(shp_file_name)
+        return 0
 
     with open(csv_file_name, 'rb') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
@@ -132,3 +157,8 @@ def shapeFileToCsv(shp_file_name, csv_file_name):
 if __name__ == '__main__':
     csvToShapefile('test.csv', 'test')
     shapeFileToCsv('test', None)
+
+    csv = [('POINT', 'MAP', 'LAT', 'LNG'), ('POINT', 'Myanmar', 48.1, 0.25), ('POINT', 'Myanmar', 49.2, 1.1), ('POINT', 'Myanmar', 47.5, 0.75)]
+    csvToShapefile(csv, 'test', True)
+    shapeFileToCsv('test', None)
+

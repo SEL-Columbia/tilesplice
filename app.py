@@ -4,7 +4,9 @@ from flask import request
 from math import floor
 from clippers import range_clipper as rc
 from shapegen import shapegen as sp
+import ast
 import os
+from datetime import date
 
 app = Flask(__name__, static_folder='')
 
@@ -30,9 +32,15 @@ def clip():
 
     return "Could not clip tif" 
 
-@app.route('/upload.csv')
+@app.route('/upload.csv', methods=['POST'])
 def upload():
-    return "Not implemented"
+    csv = request.get_json(force=True)['csv']
+    point = csv[1]
+    shp_file = "output/"+point[1]+"."+point[0]+"."+str(int(point[2]))+"."+str(int(point[3]))
+    if sp.csvToShapefile(csv, shp_file, True) == 0:
+        return shp_file
+    else:
+        return "Could not produce shapefile"
 
 @app.route('/load.shp')
 def load():
