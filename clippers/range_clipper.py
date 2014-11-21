@@ -9,7 +9,7 @@ import numpy
 
 gdal.AllRegister()
 
-def range_clip(top_x, top_y, bot_x, bot_y, raster):
+def range_clip(top_x, top_y, bot_x, bot_y, raster, raster_name):
 
     image = gdal.Open(raster, GA_ReadOnly);
     if image is None:
@@ -50,7 +50,7 @@ def range_clip(top_x, top_y, bot_x, bot_y, raster):
     
     
     print(((bot_x - top_x)*(1.0/float(pxW))),((bot_y - top_y)*(1.0/float(pxH))))
-    out_tiff = "%s.out.%d.%d.tif" %(raster.split(".")[0], top_x, top_y)
+    out_tiff = "output/%s.out.%d.%d.tif" %(raster_name.split(".")[0], top_x, top_y)
     bandList = numpy.array(bandList)
     driver = gdal.GetDriverByName('GTiff');
     dataset = driver.Create(
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     
     
     print("Clipping %s, bounding box btwn (%d, %d) and (%d, %d)." %(raster, top_x, top_y, bot_x, bot_y))
-    out = range_clip(top_x, top_y, bot_x, bot_y, raster);
+    out = range_clip(top_x, top_y, bot_x, bot_y, raster, raster);
     print("Generated %s" %out)
     
     

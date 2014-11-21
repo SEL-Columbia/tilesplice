@@ -3,6 +3,7 @@ from flask import Flask
 from flask import request
 from math import floor
 from clippers import range_clipper as rc
+from shapegen import shapegen as sp
 import os
 
 app = Flask(__name__, static_folder='')
@@ -20,15 +21,22 @@ def clip():
     bot_x = float(request.args.get('bot_x'))
     bot_y = float(request.args.get('bot_y'))
     geo_tiff = request.args.get('image') + '.tif'
-    geo_name = geo_tiff.split(".")[0]
-
-    out_tiff = rc.range_clip(top_x, top_y, bot_x, bot_y, geo_tiff)
+    geo_path = os.path.join(geo_tiff.split(".")[0], geo_tiff)
+    
+    out_tiff = rc.range_clip(top_x, top_y, bot_x, bot_y, geo_path, geo_tiff)
 
     if os.path.exists(out_tiff):
-        return os.path.join(request.url_root, out_tiff)
+        return out_tiff
 
     return "Could not clip tif" 
 
+@app.route('/upload.csv')
+def upload():
+    return "Not implemented"
+
+@app.route('/load.shp')
+def load():
+    return "Not implemented"
 
 @app.route('/<path:path>')
 def serve_anything(path):
