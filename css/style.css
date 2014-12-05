@@ -21,9 +21,26 @@
     margin-right: 2%;
 }
 
+#upload {
+    position: absolute;
+    bottom: 0;
+    width: 14%;
+    height: 20px;
+    background: green;
+    margin-bottom: 20px;
+}
 #geojson {
     margin: 0px auto;
     width: 100%;
     font-size: 12px;
     word-wrap: break-word;
+}
+
+#shps {
+    color: blue;
+}
+
+#clip {
+    color: red;
+    padding: 2px 0px;
 }

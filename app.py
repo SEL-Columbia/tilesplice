@@ -7,6 +7,7 @@ from shapegen import shapegen as sp
 import ast
 import os
 from datetime import date
+import json
 
 app = Flask(__name__, static_folder='')
 
@@ -25,26 +26,34 @@ def clip():
     geo_tiff = request.args.get('image') + '.tif'
     geo_path = os.path.join(geo_tiff.split(".")[0], geo_tiff)
     
-    out_tiff = rc.range_clip(top_x, top_y, bot_x, bot_y, geo_path, geo_tiff)
+    out_tiff = "output/%s.out.%d.%d.tif" %(geo_tiff.split(".")[0], top_x, top_y)
+    out_tiff = rc.range_clip(top_x, top_y, bot_x, bot_y, geo_path, out_tiff)
 
     if os.path.exists(out_tiff):
         return out_tiff
 
     return "Could not clip tif" 
 
-@app.route('/upload.csv', methods=['POST'])
-def upload():
+@app.route('/download.csv', methods=['POST'])
+def download():
     csv = request.get_json(force=True)['csv']
-    point = csv[1]
-    shp_file = "output/"+point[1]+"."+point[0]+"."+str(int(point[2]))+"."+str(int(point[3]))
-    if sp.csvToShapefile(csv, shp_file, True) == 0:
+    shp_type,raster,lat,lng = csv[1] #line 0 is header
+    shp_file = "output/%s.%.5f.%.5f.%s." %(raster, float(lat), float(lng), shp_type)
+    if sp.arrayToShapefile(csv, shp_file) == 0:
         return shp_file
     else:
         return "Could not produce shapefile"
 
-@app.route('/load.shp')
-def load():
-    return "Not implemented"
+@app.route('/upload.shp', methods=['POST'])
+def upload():
+    shx = request.files.getlist("shx")[0]
+    shp = request.files.getlist("shp")[0]
+    dbf = request.files.getlist("dbf")[0]
+
+    print request.files
+
+    data_array = sp.shapefileToArray(shpf=shp, dbff=dbf, shxf=shx);
+    return json.dumps({'csv': data_array})
 
 @app.route('/<path:path>')
 def serve_anything(path):
