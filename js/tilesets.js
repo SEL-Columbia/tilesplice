@@ -31,7 +31,7 @@ var myanmar_jan_layer = L.tileLayer('../myanmar_jan/{z}/{x}/{y}.png', {
 // Web layers
 var g_layer = L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         minZoom: 1,
-        maxZoom: 18
+        maxZoom: 18,
 })
 
 var l_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -61,6 +61,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new L.FeatureGroup(),
         cen: [20.9, 96.15],
         zom: 12
     }, 
@@ -69,6 +70,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new L.FeatureGroup(),
         cen: [21.82838, 96.39941],
         zom: 12
     }, 
@@ -77,6 +79,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new L.FeatureGroup(),
         cen: [20.902, 96.157],
         zom: 12
     }, 
@@ -85,6 +88,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new L.FeatureGroup(),
         cen: [20.941, 96.090],
         zom: 12
     },
@@ -94,6 +98,7 @@ var localeOptions = {
         web: true,
         src: new Proj4js.Proj('EPSG:32647'),
         dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new L.FeatureGroup(),
         cen: [20.941, 96.090],
         zom: 12
     },
@@ -103,9 +108,9 @@ var localeOptions = {
         web: true,
         src: new Proj4js.Proj('EPSG:32647'),
         dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new L.FeatureGroup(),
         cen: [20.941, 96.090],
         zom: 12
     },
 };
 
-var initial_layer = myanmar_layer;
