@@ -139,10 +139,8 @@ map.on('draw:created', function(e) {
 });
 
 var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
-    var validMarkers = [["POINT", "MAP", "LAT", "LNG"]];
-    var counter = 0;
-    var drawLayer = drawGroup;
 
+    // Set up ajax request, update console with shp file location on success;
     var req = null;
     req = new XMLHttpRequest();
     req.onreadystatechange = function() {
@@ -157,47 +155,84 @@ var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
         }
     }
 
-    drawLayer.eachLayer(function(layer) {
-        var latlng = layer._latlng;
-        window.lay = layer;
-        if  (   (latlng.lng < bot_x && latlng.lng > top_x)
-            &&  (latlng.lat < top_y && latlng.lat > bot_y) ) {
+    var pointsGeoJson = drawGroup.toGeoJSON();
+    var validFeatures = [];
+    var lat;
+    var lng;
+    var counter = 0;
+    var curTiles = locale;
 
-            var geopoint = ["POINT", locale, latlng.lat, latlng.lng]
-            validMarkers.push(geopoint);
+    // loop though featureGroup geojson, record points that are within bounds
+    for (i=0; i < pointsGeoJson.features.length; i++) {
+        var lat = pointsGeoJson.features[i].geometry.coordinates[1];
+        var lng = pointsGeoJson.features[i].geometry.coordinates[0];
+        var type = pointsGeoJson.features[i].geometry.type;
+
+        if  ((lng < bot_x && lng > top_x) &&  (lat < top_y && lat > bot_y)) {
+
+            counter++;
+            // add in properties now
+            pointsGeoJson.features[i].properties.map = curTiles;
+            validFeatures.push(pointsGeoJson.features[i]);
         }
-    });
+    };
 
-    if (validMarkers.length > 1) {
-        req.open("POST", "/download.csv", true);
-        console.log(JSON.stringify({'csv': validMarkers}));
-        req.send(JSON.stringify({'csv': validMarkers}));
+    // update features list
+    delete pointsGeoJson.features;
+    pointsGeoJson.features = validFeatures;
+
+    if (pointsGeoJson.features.length > 1) {
+        req.open("POST", "/download.geojson", true);
+        console.log(JSON.stringify(pointsGeoJson));
+        req.send(JSON.stringify(pointsGeoJson));
     }
 
 }
 /******************************************************************************/
 
 /* UPLOAD */
-var loadPoints = function(layer, csv) {
-    if (!localeOptions[layer]) {
-        alert("layer doesn't exist");
-        return 1;
-    }
+var loadPoints = function(geojson) {
 
-    //var drawLayer = localeOptions[layer].draw;
+    // draws markers
+    function drawPoint(lat, lng, name, type) {
+        var marker = new L.marker([lat, lng], {
+            title: name,
+            alt: name,
+            riseOnHover: true
+        });
 
-    for (i=1; i < csv.length; i++) {
-        var marker = L.marker([ csv[i][2], csv[i][3]]);
-        drawGroup.addLayer(marker);
-        map.setView([ csv[i][2], csv[i][3]], 14);
-    }
+        marker.addTo(map);
+    };
 
+    // for drawing circles
+    var geojsonMarkerOptions = {
+        radius: 8,
+        fillColor: "#FF0000",
+        color: "#000000",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+    };
+    
+
+    L.geoJson(geojson, {
+        onEachFeature: function (feature, layer) {
+            //layer.bindPopup(feature.properties.description);
+            var coords = feature.geometry.coordinates;
+            map.setView([coords[1],coords[0]], 14);
+            //drawPoint(coords[1]. coords[0]. "myanmar pt", "house")
+        },
+        // for drawing circles
+        pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, geojsonMarkerOptions);
+        }
+    }).addTo(map);
     return 0;
 }
 
 // Handle upload
 var postFile = function() {
-    if (input.files.length < 3) {
+    if (input.files.length < 2) {
         return;
     }
     
@@ -213,42 +248,39 @@ var postFile = function() {
         switch(suffix) {
             case "shp":
                   shp = input.files[i];
+                  fd.append("shp", shp);
                   break;
             case "shx":
                   shx = input.files[i];
+                  fd.append("shx", shx);
                   break;
 
             case "dbf":
                   dbf = input.files[i];
+                  fd.append("dbf", dbf);
                   break;
             default:
                   break;
         }
     }
-
     
-    if (!(shp && shx && dbf)) {
-        alert("missing somefile");
+    if (!shp || !dbf) {
+        alert("Require at least a shp and a dbf file to be submitted");
         return;
     }
 
-    fd.append("shx", shx);
-    fd.append("shp", shp);
-    fd.append("dbf", dbf);
 
     // ajax req to update layer
     var req = new XMLHttpRequest();
     req.onreadystatechange = function() {
         if (req.readyState == 4) {
-            var csv = JSON.parse(req.responseText).csv;
-            var layer_name = csv[0][1];
-            var num_pts = csv.length - 1;
-            var err = loadPoints(layer_name, csv);
+            var geojson = JSON.parse(req.responseText);
+            var err = loadPoints(geojson);
             if (err) 
                 return;
 
             geojsondiv.innerHTML += "<p id='loaded'> Loaded: "
-                + num_pts + " for layer " + layer_name
+                + geojson.features.length + " for layer " + "GENERIC"
                 + "</p>";
         }
     }
