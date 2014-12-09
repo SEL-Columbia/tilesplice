@@ -6,8 +6,8 @@ var map = L.map('map', {
 });
 
 // background layer
-// landsat
 var bg_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        // landsat
         minZoom: 1,
         maxZoom: 18,
 })
@@ -58,6 +58,14 @@ input.name = "uploads[]";
 input.setAttribute("multiple", true);
 input.setAttribute("onchange", "postFile()");
 inputdiv.appendChild(input);
+
+// best I can do sadly, i want to simulate radio button events`
+//
+// radio button events
+map.on('baselayerchange', function(e) {
+    window.eii = e;
+    swapLayer(e);
+});
 /******************************************************************************/
 
 /* DOWNLOAD */
@@ -181,7 +189,7 @@ var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
     delete pointsGeoJson.features;
     pointsGeoJson.features = validFeatures;
 
-    if (pointsGeoJson.features.length > 1) {
+    if (pointsGeoJson.features.length > 0) {
         req.open("POST", "/download.geojson?raster="+curTiles, true);
         console.log(JSON.stringify(pointsGeoJson));
         req.send(JSON.stringify(pointsGeoJson));
@@ -201,7 +209,7 @@ var loadPoints = function(geojson) {
             riseOnHover: true
         });
 
-        marker.addTo(map);
+        return marker;
     };
 
     // for drawing circles
@@ -220,13 +228,14 @@ var loadPoints = function(geojson) {
             //layer.bindPopup(feature.properties.description);
             var coords = feature.geometry.coordinates;
             map.setView([coords[1],coords[0]], 14);
-            //drawPoint(coords[1]. coords[0]. "myanmar pt", "house")
+            //var layer = drawPoint(coords[1]. coords[0]. "myanmar pt", "house")
+            drawGroup.addLayer(layer);;
         },
         // for drawing circles
         pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, geojsonMarkerOptions);
         }
-    }).addTo(map);
+    });
     return 0;
 }
 
@@ -241,6 +250,7 @@ var postFile = function() {
     var shx = null;
     var shp = null;
     var dbf = null;
+    var prj = null;
 
     for(i = 0; i < input.files.length; i++) {
         var suffix_arr = input.files[i].name.split(".");
@@ -254,10 +264,14 @@ var postFile = function() {
                   shx = input.files[i];
                   fd.append("shx", shx);
                   break;
-
             case "dbf":
                   dbf = input.files[i];
                   fd.append("dbf", dbf);
+                  break;
+
+            case "prj":
+                  prj = input.files[i];
+                  fd.append("prj", prj);
                   break;
             default:
                   break;
@@ -275,12 +289,26 @@ var postFile = function() {
     req.onreadystatechange = function() {
         if (req.readyState == 4) {
             var geojson = JSON.parse(req.responseText);
+            var length =  geojson.features.length;
+            if (length < 1) {
+                return;
+            }
+            var map_name = geojson.features[0].properties.map || "None";
+            if (localeOptions[map_name]) {
+                // I know this one!
+                console.log("HERE");
+                console.log("HERE");
+                var props = {name: map_name, layer: localeOptions[map_name].layer}
+                //var event = new L.LayersControlEvent("baselayerchange", props);
+                //document.dispatchEvent(event);
+            }
+
             var err = loadPoints(geojson);
             if (err) 
                 return;
 
             geojsondiv.innerHTML += "<p id='loaded'> Loaded: "
-                + geojson.features.length + " for layer " + "GENERIC"
+                + length + " for layer " + map_name
                 + "</p>";
         }
     }
@@ -291,22 +319,12 @@ var postFile = function() {
 /******************************************************************************/
 
 /* Utils */
-var swapDrawControl = function(newLocale) {
-
-
-    drawControl.removeFrom(map);
-
-    drawControl = new L.Control.Draw({
-        draw: allowedShapes, 
-        edit: {
-                featureGroup: localeOptions[newLocale].draw
-              }
-    });
-
-    localeOptions[locale].draw.bringToBack(map);
-    localeOptions[newLocale].draw.bringToFront(map);
-
-    map.addControl(drawControl);
+var swapDrawGroup = function(newLocale) {
+    localeOptions[locale].draw = drawGroup.getLayers();
+    drawGroup.clearLayers();
+    localeOptions[newLocale].draw.forEach(function(layer) {
+        drawGroup.addLayer(layer);
+    });;
 }
 
 var loadFeatureGroups = function(start) {
@@ -318,18 +336,14 @@ var loadFeatureGroups = function(start) {
     localeOptions[locale].draw.bringToFront(map);
 }
 
-// radio button events
-map.on('baselayerchange', function(e) {
-        //swapDrawControl(e.name); groups dont work as i expected
+var swapLayer = function(e) {
+        swapDrawGroup(e.name); 
         locale = e.name; 
         var layer = e.layer;
         var cen = localeOptions[locale].cen;
         var zom = localeOptions[locale].zom;
         map.setView(cen, zom);
-
-        //TODO: change feature group
-});
+}
 /******************************************************************************/
 
-//loadFeatureGroups();
 window.map = map;

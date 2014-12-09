@@ -61,7 +61,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        draw: new L.FeatureGroup(),
+        draw: new Array(),
         cen: [20.9, 96.15],
         zom: 12
     }, 
@@ -70,7 +70,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        draw: new L.FeatureGroup(),
+        draw: new Array(),
         cen: [21.82838, 96.39941],
         zom: 12
     }, 
@@ -79,7 +79,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        draw: new L.FeatureGroup(),
+        draw: new Array(),
         cen: [20.902, 96.157],
         zom: 12
     }, 
@@ -88,7 +88,7 @@ var localeOptions = {
         web: false,
         src: new Proj4js.Proj('EPSG:4326'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        draw: new L.FeatureGroup(),
+        draw: new Array(),
         cen: [20.941, 96.090],
         zom: 12
     },
@@ -98,7 +98,7 @@ var localeOptions = {
         web: true,
         src: new Proj4js.Proj('EPSG:32647'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        draw: new L.FeatureGroup(),
+        draw: new Array(),
         cen: [20.941, 96.090],
         zom: 12
     },
@@ -108,7 +108,7 @@ var localeOptions = {
         web: true,
         src: new Proj4js.Proj('EPSG:32647'),
         dest: new Proj4js.Proj('EPSG:32647'),
-        draw: new L.FeatureGroup(),
+        draw: new Array(),
         cen: [20.941, 96.090],
         zom: 12
     },

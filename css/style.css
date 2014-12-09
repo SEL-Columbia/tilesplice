@@ -40,7 +40,10 @@
     color: blue;
 }
 
+#loaded {
+    color: green;
+}
+
 #clip {
     color: red;
-    padding: 2px 0px;
 }

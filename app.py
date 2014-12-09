@@ -42,7 +42,7 @@ def download():
     features = request.get_json(force=True);
     raster = request.args.get('raster');
     shp_file = "output/%s.out.%s." %(raster, str(uuid.uuid4()))
-    if geojsonToShape(features, shp_file) == 0:
+    if geojsonToShape(features, shp_file, raster) == 0:
         return shp_file
     else:
         return "Could not produce shapefile"
@@ -50,17 +50,15 @@ def download():
 @app.route('/upload.shp', methods=['POST'])
 def upload():
 
+    # Guranteed to be valid (at least) one element lists
     shp = request.files.getlist("shp")[0]
     dbf = request.files.getlist("dbf")[0]
-    shx = request.files.getlist("shx")
-    if shx and len(shx) == 1:
-        shx = shx[0]
-    else:
-        shx = None
 
-    print request.files
-    print ""
-    print shp,dbf,shx
+    # May or may not have been submitted
+    shx = request.files.getlist("shx")
+    prj = request.files.getlist("prj")
+    shx = shx[0] if (shx and len(shx) == 1) else None
+    prj = prk[0] if (prj and len(prj) == 1) else None
 
     geojson = shapefileToGeojson(shp, shx, dbf);
     return geojson
