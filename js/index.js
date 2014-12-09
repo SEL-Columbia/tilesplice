@@ -182,7 +182,7 @@ var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
     pointsGeoJson.features = validFeatures;
 
     if (pointsGeoJson.features.length > 1) {
-        req.open("POST", "/download.geojson", true);
+        req.open("POST", "/download.geojson?raster="+curTiles, true);
         console.log(JSON.stringify(pointsGeoJson));
         req.send(JSON.stringify(pointsGeoJson));
     }

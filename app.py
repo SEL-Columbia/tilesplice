@@ -2,7 +2,7 @@
 from flask import Flask
 from flask import request
 from math import floor
-from clippers import range_clipper as rc
+import clippers.range_clipper as rc
 from shapegen.shapeToGeojson import *
 from shapegen.geojsonToShape import *
 import ast
@@ -37,40 +37,15 @@ def clip():
 
     return "Could not clip tif" 
 
-#@app.route('/download.csv', methods=['POST'])
-#def download():
-#    csv = request.get_json(force=True)['csv']
-#    shp_type,raster,lat,lng = csv[1] #line 0 is header
-#    shp_file = "output/%s.%.5f.%.5f.%s." %(raster, float(lat), float(lng), shp_type)
-#    if sp.arrayToShapefile(csv, shp_file) == 0:
-#        return shp_file
-#    else:
-#        return "Could not produce shapefile"
-#
-
 @app.route('/download.geojson', methods=['POST'])
 def download():
     features = request.get_json(force=True);
-    print request.args.get('raster');
-    print request.args.get('raster');
-    print request.args.get('raster');
-    raster = "myanmar"
+    raster = request.args.get('raster');
     shp_file = "output/%s.out.%s." %(raster, str(uuid.uuid4()))
     if geojsonToShape(features, shp_file) == 0:
         return shp_file
     else:
         return "Could not produce shapefile"
-
-#@app.route('/upload.shp', methods=['POST'])
-#def upload():
-#    shx = request.files.getlist("shx")[0]
-#    shp = request.files.getlist("shp")[0]
-#    dbf = request.files.getlist("dbf")[0]
-#
-#    print request.files
-#
-#    data_array = sp.shapefileToArray(shpf=shp, dbff=dbf, shxf=shx);
-#    return json.dumps({'csv': data_array})
 
 @app.route('/upload.shp', methods=['POST'])
 def upload():
