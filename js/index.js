@@ -37,6 +37,9 @@ var allowedShapes = {
     }
 };
 
+var icon_alt = new L.icon({
+    iconUrl: "css/images/icon-orange.png"
+});
 var drawControl = new L.Control.Draw({
     draw: allowedShapes, 
     edit: {
@@ -59,11 +62,9 @@ input.setAttribute("multiple", true);
 input.setAttribute("onchange", "postFile()");
 inputdiv.appendChild(input);
 
-// best I can do sadly, i want to simulate radio button events`
-//
 // radio button events
 map.on('baselayerchange', function(e) {
-    window.eii = e;
+    window.baseEvent = e;
     swapLayer(e);
 });
 /******************************************************************************/
@@ -109,10 +110,8 @@ map.on('draw:created', function(e) {
             .setContent('<p> Clipping GeoTiff ... </p>')
             .addTo(map);
 
-        console.log(pptop, ppbot);
         Proj4js.transform(source, dest, pptop);
         Proj4js.transform(source, dest, ppbot);
-        console.log(pptop, ppbot);
 
         var get = "?top_x=" + pptop.x 
                 + "&top_y=" + pptop.y
@@ -206,34 +205,41 @@ var loadPoints = function(geojson) {
         var marker = new L.marker([lat, lng], {
             title: name,
             alt: name,
+            icon: icon_alt,
             riseOnHover: true
         });
 
         return marker;
     };
 
-    // for drawing circles
-    var geojsonMarkerOptions = {
-        radius: 8,
-        fillColor: "#FF0000",
-        color: "#000000",
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.8
-    };
-    
-
+    window.features = [];
+    var dst = new Proj4js.Proj('EPSG:4326');
     L.geoJson(geojson, {
         onEachFeature: function (feature, layer) {
             //layer.bindPopup(feature.properties.description);
+            window.features.push(feature)
+             
             var coords = feature.geometry.coordinates;
-            map.setView([coords[1],coords[0]], 14);
-            //var layer = drawPoint(coords[1]. coords[0]. "myanmar pt", "house")
+            var projection = feature.properties.projection;
+            var map_name = feature.properties.map;
+
+            // project point 
+            if (projection) {
+                console.log(projection);
+                Proj4js.defs['TEMP'] = projection;
+                var src = new Proj4js.Proj('TEMP');
+                var point = new Proj4js.Point(coords);
+                console.log(point, coords);
+                Proj4js.transform(src, dst, point);
+                console.log(point, coords);
+                // save change
+                feature.geometry.coordinates = [point.x, point.y];
+                coords = feature.geometry.coordinates;
+            }
+
+            map.setView([coords[1], coords[0]], 14);
+            var layer = drawPoint(coords[1], coords[0], map_name, map_name)
             drawGroup.addLayer(layer);;
-        },
-        // for drawing circles
-        pointToLayer: function (feature, latlng) {
-            return L.circleMarker(latlng, geojsonMarkerOptions);
         }
     });
     return 0;
@@ -241,10 +247,6 @@ var loadPoints = function(geojson) {
 
 // Handle upload
 var postFile = function() {
-    if (input.files.length < 2) {
-        return;
-    }
-    
     var fd = new FormData();
 
     var shx = null;
@@ -293,11 +295,8 @@ var postFile = function() {
             if (length < 1) {
                 return;
             }
-            var map_name = geojson.features[0].properties.map || "None";
+            var map_name = geojson.features[0].properties.map || "global";
             if (localeOptions[map_name]) {
-                // I know this one!
-                console.log("HERE");
-                console.log("HERE");
                 var props = {name: map_name, layer: localeOptions[map_name].layer}
                 //var event = new L.LayersControlEvent("baselayerchange", props);
                 //document.dispatchEvent(event);

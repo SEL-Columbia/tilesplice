@@ -58,9 +58,9 @@ def upload():
     shx = request.files.getlist("shx")
     prj = request.files.getlist("prj")
     shx = shx[0] if (shx and len(shx) == 1) else None
-    prj = prk[0] if (prj and len(prj) == 1) else None
+    prj = prj[0] if (prj and len(prj) == 1) else None
 
-    geojson = shapefileToGeojson(shp, shx, dbf);
+    geojson = shapefileToGeojson(shp, shx, dbf, prj);
     return geojson
 
 @app.route('/<path:path>')
