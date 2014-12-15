@@ -1,97 +1,36 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function (global){
-/* INIT */
-var Proj4js = require('proj4');
-var L = require('leaflet');
-require('leaflet-draw');
-var tilesets = require('./tilesets.js');
-var locale = tilesets.locale;
-var localeOptions = tilesets.localeOptions;
-var baseMaps = tilesets.baseMaps;
+var locale = require('./tilesets.js').locale;
+var localeOptions = require('./tilesets.js').localeOptions;
 
-// ma map
-var map = L.map('map', { 
-    center: [20.9, 96.15],
-    zoom:  12,
-});
+module.exports = function(e, map, drawGroup) {
+    var new_locale = e.name;
 
-// background layer
-var bg_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        // landsat
-        minZoom: 1,
-        maxZoom: 18,
-})
-bg_layer.addTo(map);
+    // swap feature group layers
+    localeOptions[locale].draw = drawGroup.getLayers();
+    drawGroup.clearLayers();
+    localeOptions[new_locale].draw.forEach(function(layer) {
+        drawGroup.addLayer(layer);
+    });
 
-//XXX: locale, localeOptions, baseMap are all set in tilesets
-
-// start layer (is in baseMaps)
-localeOptions[locale].layer.addTo(map);
-var drawGroup = new L.FeatureGroup();
-drawGroup.addTo(map);
-
-// Base Map
-L.control.layers(baseMaps).addTo(map);
-
-var icon_alt = new L.icon({
-    iconUrl: "css/images/icon-orange.png",
-    iconSize: [25, 41],
-    iconAnchor: [11.5, 39]
-});
-
-var icon_def = new L.icon({
-    iconUrl: "css/images/icon-default.png",
-    iconSize: [25, 41],
-    iconAnchor: [11.5, 39]
-});
-
-// Initialise the draw control and pass it the FeatureGroup of editable layers
-var allowedShapes = {
-    polyline: false,
-    polygon: false,
-    rectangle: {
-        clickable: false
-    },
-    circle: false,
-    marker: {
-        repeatMode: true,
-        editing: true,
-        icon: icon_def
-    }
+    // set new locale, zoom in to defined center
+    locale = new_locale; 
+    var layer = e.layer;
+    var cen = localeOptions[locale].cen;
+    var zom = localeOptions[locale].zom;
+    map.setView(cen, zom);
 };
 
-var drawControl = new L.Control.Draw({
-    draw: allowedShapes, 
-    edit: {
-            featureGroup: drawGroup
-          }
-});
+},{"./tilesets.js":5}],2:[function(require,module,exports){
+var L = require('leaflet');
+var Proj4js = require('proj4');
 
-map.addControl(drawControl);
+var locale = require('./tilesets.js').locale;
+var localeOptions = require('./tilesets.js').localeOptions;
 
-// Basically a log for events that happened
-var geojsondiv = document.getElementById('geojson');
-
-// Set up upload button
-var inputdiv = document.getElementById('upload');
-var input = document.createElement("INPUT");
-input.setAttribute("type", "file");
-input.setAttribute("name", "uploads[]");
-input.name = "uploads[]";
-input.setAttribute("multiple", true);
-input.setAttribute("onchange", "postFile()");
-inputdiv.appendChild(input);
-
-// radio button events
-map.on('baselayerchange', function(e) {
-    window.baseEvent = e;
-    swapLayer(e);
-});
-/******************************************************************************/
-
-/* DOWNLOAD */
-// The only event that matters, drawing a box, or setting points
-map.on('draw:created', function(e) {
+module.exports = function(e, map, geojsondiv, drawGroup) {
+    var map = map;
+    var geojsondiv = geojsondiv;
+    var drawGroup = drawGroup;
     var source = localeOptions[locale].src;
     var tile_layer = localeOptions[locale].layer;
     var dest = localeOptions[locale].dest;
@@ -99,6 +38,56 @@ map.on('draw:created', function(e) {
 
     var type = e.layerType;
     var layer = e.layer;
+
+    var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
+    
+        // Set up ajax request, update console with shp file location on success;
+        var req = null;
+        req = new XMLHttpRequest();
+        req.onreadystatechange = function() {
+            if (req.readyState == 4) {
+    
+                var url1 = "http://" + window.location.host + "/" + req.responseText + "dbf";
+                var url2 = "http://" + window.location.host + "/" + req.responseText + "sbx";
+                var url3 = "http://" + window.location.host + "/" + req.responseText + "shp";
+                geojsondiv.innerHTML += "<p id='shps'>" + url1 + "</p>";
+                geojsondiv.innerHTML += "<p id='shps'>" + url2 + "</p>";
+                geojsondiv.innerHTML += "<p id='shps'>" + url3 + "</p>";
+            }
+        }
+    
+        var pointsGeoJson = drawGroup.toGeoJSON();
+        var validFeatures = [];
+        var lat;
+        var lng;
+        var counter = 0;
+        var curTiles = locale;
+    
+        // loop though featureGroup geojson, record points that are within bounds
+        for (i=0; i < pointsGeoJson.features.length; i++) {
+            var lat = pointsGeoJson.features[i].geometry.coordinates[1];
+            var lng = pointsGeoJson.features[i].geometry.coordinates[0];
+            var type = pointsGeoJson.features[i].geometry.type;
+    
+            if  ((lng < bot_x && lng > top_x) &&  (lat < top_y && lat > bot_y)) {
+    
+                counter++;
+                // add in properties now
+                pointsGeoJson.features[i].properties.map = curTiles;
+                validFeatures.push(pointsGeoJson.features[i]);
+            }
+        };
+    
+        // update features list
+        delete pointsGeoJson.features;
+        pointsGeoJson.features = validFeatures;
+    
+        if (pointsGeoJson.features.length > 0) {
+            req.open("POST", "/download.geojson?raster="+curTiles, true);
+            console.log(JSON.stringify(pointsGeoJson));
+            req.send(JSON.stringify(pointsGeoJson));
+        }
+    };
 
     if (type === 'rectangle') {
         var latlngs = layer.getLatLngs();
@@ -163,214 +152,177 @@ map.on('draw:created', function(e) {
         drawGroup.addLayer(layer);
     }
 
-});
+};
 
-var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
+},{"./tilesets.js":5,"leaflet":8,"proj4":44}],3:[function(require,module,exports){
+var Proj4js = require('proj4');
+var L = require('leaflet');
+require('leaflet-draw');
 
-    // Set up ajax request, update console with shp file location on success;
-    var req = null;
-    req = new XMLHttpRequest();
-    req.onreadystatechange = function() {
-        if (req.readyState == 4) {
+var tilesets = require('./tilesets.js');
+var locale = tilesets.locale;
+var localeOptions = tilesets.localeOptions;
+var baseMaps = tilesets.baseMaps;
 
-            var url1 = "http://" + window.location.host + "/" + req.responseText + "dbf";
-            var url2 = "http://" + window.location.host + "/" + req.responseText + "sbx";
-            var url3 = "http://" + window.location.host + "/" + req.responseText + "shp";
-            geojsondiv.innerHTML += "<p id='shps'>" + url1 + "</p>";
-            geojsondiv.innerHTML += "<p id='shps'>" + url2 + "</p>";
-            geojsondiv.innerHTML += "<p id='shps'>" + url3 + "</p>";
-        }
-    }
+module.exports = (function() {
+    var icon_alt = new L.icon({
+        iconUrl: "css/images/icon-orange.png",
+        iconSize: [25, 41],
+        iconAnchor: [11.5, 39]
+    });
+    
+    var icon_def = new L.icon({
+        iconUrl: "css/images/icon-default.png",
+        iconSize: [25, 41],
+        iconAnchor: [11.5, 39]
+    });
 
-    var pointsGeoJson = drawGroup.toGeoJSON();
-    var validFeatures = [];
-    var lat;
-    var lng;
-    var counter = 0;
-    var curTiles = locale;
+    function init_map(url) {
 
-    // loop though featureGroup geojson, record points that are within bounds
-    for (i=0; i < pointsGeoJson.features.length; i++) {
-        var lat = pointsGeoJson.features[i].geometry.coordinates[1];
-        var lng = pointsGeoJson.features[i].geometry.coordinates[0];
-        var type = pointsGeoJson.features[i].geometry.type;
+        var map = L.map('map', { 
+                center: [20.9, 96.15],
+            zoom:  12,
+        });
 
-        if  ((lng < bot_x && lng > top_x) &&  (lat < top_y && lat > bot_y)) {
+        // landsat
+        var bg_url = url || 'http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        var bg_layer = L.tileLayer(bg_url, {
+                minZoom: 1,
+                maxZoom: 18,
+        });
+        bg_layer.addTo(map);
 
-            counter++;
-            // add in properties now
-            pointsGeoJson.features[i].properties.map = curTiles;
-            validFeatures.push(pointsGeoJson.features[i]);
-        }
+        // start layer (is in baseMaps)
+        localeOptions[locale].layer.addTo(map);
+
+        // Base Map
+        L.control.layers(baseMaps).addTo(map);
+
+        return map;
     };
 
-    // update features list
-    delete pointsGeoJson.features;
-    pointsGeoJson.features = validFeatures;
+    function init_draw_controllers(map) {
 
-    if (pointsGeoJson.features.length > 0) {
-        req.open("POST", "/download.geojson?raster="+curTiles, true);
-        console.log(JSON.stringify(pointsGeoJson));
-        req.send(JSON.stringify(pointsGeoJson));
-    }
+        // Feature group will contain all marker layers
+        var drawGroup = new L.FeatureGroup();
+        drawGroup.addTo(map);
 
-}
+        // Initialise the draw control and pass it the FeatureGroup of editable layers
+        var allowedShapes = {
+            polyline: false,
+            polygon: false,
+            rectangle: {
+                clickable: false
+            },
+            circle: false,
+            marker: {
+                repeatMode: true,
+                editing: true,
+                icon: icon_def
+            }
+        };
+
+        var drawControl = new L.Control.Draw({
+            draw: allowedShapes, 
+            edit: {
+                    featureGroup: drawGroup
+                  }
+        });
+        
+        map.addControl(drawControl);
+
+        return drawGroup;
+    };
+
+
+    function init_dom(map) {
+        // Basically a log for events that happened
+        var geojsondiv = document.getElementById('geojson');
+        
+        // Set up upload button
+        var inputdiv = document.getElementById('upload');
+        var input = document.createElement("INPUT");
+        input.setAttribute("type", "file");
+        input.setAttribute("name", "uploads[]");
+        input.name = "uploads[]";
+        input.setAttribute("multiple", true);
+        inputdiv.appendChild(input);
+
+        return {
+            log: geojsondiv,
+            input: input
+        };
+    };
+
+    var _map = init_map();
+
+    return {
+        icon_alt: icon_alt,
+        icon_def: icon_def,
+        drawGroup: init_draw_controllers(_map),
+        dom: init_dom(_map),
+        map: _map
+    };
+})();
+
+},{"./tilesets.js":5,"leaflet":8,"leaflet-draw":7,"proj4":44}],4:[function(require,module,exports){
+(function (global){
+var L = require('leaflet');
+require('leaflet-draw');
+
+var Proj4js = require('proj4');
+
+var locale = require('./tilesets.js').locale;
+var localeOptions = require('./tilesets.js').localeOptions;
+
+var editor = require('./editor.js');
+
+var map = editor.map,
+    drawGroup = editor.drawGroup,
+    dom = editor.dom,
+    icon_alt = editor.icon_alt;
+
+var geojsondiv = dom.log,
+    input = dom.input;
+
+var basechange = require('./baselayerchange.js');
+var drawcreated = require('./drawcreated.js');
+var loadshapefile = require('./uploadshapefile.js');
+
+/******************************************************************************/
+
+/* DOWNLOAD */
+// The only event that matters, drawing a box, or setting points
+map.on('draw:created', function(e) {
+    drawcreated(e, map, geojsondiv, drawGroup);
+});
+
 /******************************************************************************/
 
 /* UPLOAD */
-var loadPoints = function(geojson) {
-
-    // draws markers
-    function drawPoint(lat, lng, name, type) {
-        var marker = new L.marker([lat, lng], {
-            title: name,
-            alt: name,
-            icon: icon_alt,
-            riseOnHover: true
-        });
-
-        return marker;
-    };
-
-    window.features = [];
-    var dst = new Proj4js.Proj('EPSG:4326');
-    L.geoJson(geojson, {
-        onEachFeature: function (feature, layer) {
-            //layer.bindPopup(feature.properties.description);
-            window.features.push(feature)
-             
-            var coords = feature.geometry.coordinates;
-            var projection = feature.properties.projection;
-            var map_name = feature.properties.map;
-
-            // project point 
-            if (projection) {
-                console.log(projection);
-                Proj4js.defs['TEMP'] = projection;
-                var src = new Proj4js.Proj('TEMP');
-                var point = new Proj4js.Point(coords);
-                console.log(point, coords);
-                Proj4js.transform(src, dst, point);
-                console.log(point, coords);
-                // save change
-                feature.geometry.coordinates = [point.x, point.y];
-                coords = feature.geometry.coordinates;
-            }
-
-            map.setView([coords[1], coords[0]], 14);
-            var layer = drawPoint(coords[1], coords[0], map_name, map_name)
-            drawGroup.addLayer(layer);;
-        }
-    });
-    return 0;
+// The only other event that matters, user loads shp file, i populate map
+input.setAttribute("onchange", "onUpload()");
+function onUpload() {
+    loadshapefile(map, geojsondiv, drawGroup, input, icon_alt);
 }
 
-// Handle upload
-var postFile = function() {
-    var fd = new FormData();
+global.window.onUpload = onUpload;
 
-    var shx = null;
-    var shp = null;
-    var dbf = null;
-    var prj = null;
-
-    for(i = 0; i < input.files.length; i++) {
-        var suffix_arr = input.files[i].name.split(".");
-        var suffix = suffix_arr[suffix_arr.length - 1];
-        switch(suffix) {
-            case "shp":
-                  shp = input.files[i];
-                  fd.append("shp", shp);
-                  break;
-            case "shx":
-                  shx = input.files[i];
-                  fd.append("shx", shx);
-                  break;
-            case "dbf":
-                  dbf = input.files[i];
-                  fd.append("dbf", dbf);
-                  break;
-
-            case "prj":
-                  prj = input.files[i];
-                  fd.append("prj", prj);
-                  break;
-            default:
-                  break;
-        }
-    }
-    
-    if (!shp || !dbf) {
-        alert("Require at least a shp and a dbf file to be submitted");
-        return;
-    }
-
-
-    // ajax req to update layer
-    var req = new XMLHttpRequest();
-    req.onreadystatechange = function() {
-        if (req.readyState == 4) {
-            var geojson = JSON.parse(req.responseText);
-            var length =  geojson.features.length;
-            if (length < 1) {
-                return;
-            }
-            var map_name = geojson.features[0].properties.map || "global";
-            if (localeOptions[map_name]) {
-                var props = {name: map_name, layer: localeOptions[map_name].layer}
-                //var event = new L.LayersControlEvent("baselayerchange", props);
-                //document.dispatchEvent(event);
-            }
-
-            var err = loadPoints(geojson);
-            if (err) 
-                return;
-
-            geojsondiv.innerHTML += "<p id='loaded'> Loaded: "
-                + length + " for layer " + map_name
-                + "</p>";
-        }
-    }
-    
-    req.open("POST", "/upload.shp", true);
-    req.send(fd);
-}
-
-global.window.postFile = postFile;
 /******************************************************************************/
 
-/* Utils */
-var swapDrawGroup = function(newLocale) {
-    localeOptions[locale].draw = drawGroup.getLayers();
-    drawGroup.clearLayers();
-    localeOptions[newLocale].draw.forEach(function(layer) {
-        drawGroup.addLayer(layer);
-    });;
-}
+/* SWITCH LAYER */
+// radio button events
+map.on('baselayerchange', function(e) {
+    window.base_event = e;
+    basechange(e, map, drawGroup);
+});
 
-var loadFeatureGroups = function(start) {
-    Object.keys(localeOptions).forEach(function(locale) {
-        localeOptions[locale].draw.addTo(map);
-        localeOptions[locale].draw.bringToBack(map);
-    });
-
-    localeOptions[locale].draw.bringToFront(map);
-}
-
-var swapLayer = function(e) {
-        swapDrawGroup(e.name); 
-        locale = e.name; 
-        var layer = e.layer;
-        var cen = localeOptions[locale].cen;
-        var zom = localeOptions[locale].zom;
-        map.setView(cen, zom);
-}
 /******************************************************************************/
 
 window.map = map;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./tilesets.js":2,"leaflet":4,"leaflet-draw":3,"proj4":40}],2:[function(require,module,exports){
+},{"./baselayerchange.js":1,"./drawcreated.js":2,"./editor.js":3,"./tilesets.js":5,"./uploadshapefile.js":6,"leaflet":8,"leaflet-draw":7,"proj4":44}],5:[function(require,module,exports){
 /* Layers */
 var Proj4js = require('proj4');
 var L = require('leaflet');
@@ -495,7 +447,139 @@ exports.localeOptions = localeOptions;
 exports.baseMaps = baseMaps;
 
 
-},{"leaflet":4,"leaflet-draw":3,"proj4":40}],3:[function(require,module,exports){
+},{"leaflet":8,"leaflet-draw":7,"proj4":44}],6:[function(require,module,exports){
+var L = require('leaflet');
+
+var locale = require('./tilesets.js').locale;
+var localeOptions = require('./tilesets.js').localeOptions;
+
+var Proj4js = require('proj4');
+
+module.exports = function(map, geojsondiv, drawGroup, input, icon_alt) {
+    var map = map,
+        geojsondiv = geojsondiv,
+        drawGroup = drawGroup,
+        input   =   input,
+        icon_alt = icon_alt;
+
+    function loadPoints(geojson) {
+    
+        // draws markers
+        function drawPoint(lat, lng, name, type) {
+            var marker = new L.marker([lat, lng], {
+                title: name,
+                alt: name,
+                icon: icon_alt,
+                riseOnHover: true
+            });
+    
+            return marker;
+        };
+    
+        window.features = [];
+        var dst = new Proj4js.Proj('EPSG:4326');
+        L.geoJson(geojson, {
+            onEachFeature: function (feature, layer) {
+                //layer.bindPopup(feature.properties.description);
+                window.features.push(feature)
+                 
+                var coords = feature.geometry.coordinates;
+                var projection = feature.properties.projection;
+                var map_name = feature.properties.map;
+    
+                // project point 
+                if (projection) {
+                    console.log(projection);
+                    Proj4js.defs['TEMP'] = projection;
+                    var src = new Proj4js.Proj('TEMP');
+                    var point = new Proj4js.Point(coords);
+                    console.log(point, coords);
+                    Proj4js.transform(src, dst, point);
+                    console.log(point, coords);
+                    // save change
+                    feature.geometry.coordinates = [point.x, point.y];
+                    coords = feature.geometry.coordinates;
+                }
+    
+                map.setView([coords[1], coords[0]], 14);
+                var layer = drawPoint(coords[1], coords[0], map_name, map_name)
+                drawGroup.addLayer(layer);;
+            }
+        });
+        return 0;
+    };
+
+    var fd = new FormData();
+
+    var shx = null;
+    var shp = null;
+    var dbf = null;
+    var prj = null;
+
+    for(i = 0; i < input.files.length; i++) {
+        var suffix_arr = input.files[i].name.split(".");
+        var suffix = suffix_arr[suffix_arr.length - 1];
+        switch(suffix) {
+            case "shp":
+                  shp = input.files[i];
+                  fd.append("shp", shp);
+                  break;
+            case "shx":
+                  shx = input.files[i];
+                  fd.append("shx", shx);
+                  break;
+            case "dbf":
+                  dbf = input.files[i];
+                  fd.append("dbf", dbf);
+                  break;
+
+            case "prj":
+                  prj = input.files[i];
+                  fd.append("prj", prj);
+                  break;
+            default:
+                  break;
+        }
+    }
+    
+    if (!shp || !dbf) {
+        alert("Require at least a shp and a dbf file to be submitted");
+        return;
+    }
+
+
+    // ajax req to update layer
+    var req = new XMLHttpRequest();
+    req.onreadystatechange = function() {
+        if (req.readyState == 4) {
+            var geojson = JSON.parse(req.responseText);
+            var length =  geojson.features.length;
+            if (length < 1) {
+                return;
+            }
+            var map_name = geojson.features[0].properties.map || "global";
+            if (localeOptions[map_name]) {
+                var props = {name: map_name, layer: localeOptions[map_name].layer}
+                //var event = new L.LayersControlEvent("baselayerchange", props);
+                //document.dispatchEvent(event);
+            }
+
+            var err = loadPoints(geojson);
+            if (err) 
+                return;
+
+            geojsondiv.innerHTML += "<p id='loaded'> Loaded: "
+                + length + " for layer " + map_name
+                + "</p>";
+        }
+    }
+    
+    req.open("POST", "/upload.shp", true);
+    req.send(fd);
+
+};
+
+},{"./tilesets.js":5,"leaflet":8,"proj4":44}],7:[function(require,module,exports){
 /*
 	Leaflet.draw, a plugin that adds drawing and editing tools to Leaflet powered maps.
 	(c) 2012-2013, Jacob Toye, Smartrak
@@ -506,7 +590,7 @@ exports.baseMaps = baseMaps;
 */
 !function(t,e){L.drawVersion="0.2.4-dev",L.drawLocal={draw:{toolbar:{actions:{title:"Cancel drawing",text:"Cancel"},undo:{title:"Delete last point drawn",text:"Delete last point"},buttons:{polyline:"Draw a polyline",polygon:"Draw a polygon",rectangle:"Draw a rectangle",circle:"Draw a circle",marker:"Draw a marker"}},handlers:{circle:{tooltip:{start:"Click and drag to draw circle."}},marker:{tooltip:{start:"Click map to place marker."}},polygon:{tooltip:{start:"Click to start drawing shape.",cont:"Click to continue drawing shape.",end:"Click first point to close this shape."}},polyline:{error:"<strong>Error:</strong> shape edges cannot cross!",tooltip:{start:"Click to start drawing line.",cont:"Click to continue drawing line.",end:"Click last point to finish line."}},rectangle:{tooltip:{start:"Click and drag to draw rectangle."}},simpleshape:{tooltip:{end:"Release mouse to finish drawing."}}}},edit:{toolbar:{actions:{save:{title:"Save changes.",text:"Save"},cancel:{title:"Cancel editing, discards all changes.",text:"Cancel"}},buttons:{edit:"Edit layers.",editDisabled:"No layers to edit.",remove:"Delete layers.",removeDisabled:"No layers to delete."}},handlers:{edit:{tooltip:{text:"Drag handles, or marker to edit feature.",subtext:"Click cancel to undo changes."}},remove:{tooltip:{text:"Click on a feature to remove"}}}}},L.Draw={},L.Draw.Feature=L.Handler.extend({includes:L.Mixin.Events,initialize:function(t,e){this._map=t,this._container=t._container,this._overlayPane=t._panes.overlayPane,this._popupPane=t._panes.popupPane,e&&e.shapeOptions&&(e.shapeOptions=L.Util.extend({},this.options.shapeOptions,e.shapeOptions)),L.setOptions(this,e)},enable:function(){this._enabled||(this.fire("enabled",{handler:this.type}),this._map.fire("draw:drawstart",{layerType:this.type}),L.Handler.prototype.enable.call(this))},disable:function(){this._enabled&&(L.Handler.prototype.disable.call(this),this._map.fire("draw:drawstop",{layerType:this.type}),this.fire("disabled",{handler:this.type}))},addHooks:function(){var t=this._map;t&&(L.DomUtil.disableTextSelection(),t.getContainer().focus(),this._tooltip=new L.Tooltip(this._map),L.DomEvent.on(this._container,"keyup",this._cancelDrawing,this))},removeHooks:function(){this._map&&(L.DomUtil.enableTextSelection(),this._tooltip.dispose(),this._tooltip=null,L.DomEvent.off(this._container,"keyup",this._cancelDrawing,this))},setOptions:function(t){L.setOptions(this,t)},_fireCreatedEvent:function(t){this._map.fire("draw:created",{layer:t,layerType:this.type})},_cancelDrawing:function(t){27===t.keyCode&&this.disable()}}),L.Draw.Polyline=L.Draw.Feature.extend({statics:{TYPE:"polyline"},Poly:L.Polyline,options:{allowIntersection:!0,repeatMode:!1,drawError:{color:"#b00b00",timeout:2500},icon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon"}),guidelineDistance:20,maxGuideLineLength:4e3,shapeOptions:{stroke:!0,color:"#f06eaa",weight:4,opacity:.5,fill:!1,clickable:!0},metric:!0,showLength:!0,zIndexOffset:2e3},initialize:function(t,e){this.options.drawError.message=L.drawLocal.draw.handlers.polyline.error,e&&e.drawError&&(e.drawError=L.Util.extend({},this.options.drawError,e.drawError)),this.type=L.Draw.Polyline.TYPE,L.Draw.Feature.prototype.initialize.call(this,t,e)},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._markers=[],this._markerGroup=new L.LayerGroup,this._map.addLayer(this._markerGroup),this._poly=new L.Polyline([],this.options.shapeOptions),this._tooltip.updateContent(this._getTooltipText()),this._mouseMarker||(this._mouseMarker=L.marker(this._map.getCenter(),{icon:L.divIcon({className:"leaflet-mouse-marker",iconAnchor:[20,20],iconSize:[40,40]}),opacity:0,zIndexOffset:this.options.zIndexOffset})),this._mouseMarker.on("mousedown",this._onMouseDown,this).addTo(this._map),this._map.on("mousemove",this._onMouseMove,this).on("mouseup",this._onMouseUp,this).on("zoomend",this._onZoomEnd,this))},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._clearHideErrorTimeout(),this._cleanUpShape(),this._map.removeLayer(this._markerGroup),delete this._markerGroup,delete this._markers,this._map.removeLayer(this._poly),delete this._poly,this._mouseMarker.off("mousedown",this._onMouseDown,this).off("mouseup",this._onMouseUp,this),this._map.removeLayer(this._mouseMarker),delete this._mouseMarker,this._clearGuides(),this._map.off("mousemove",this._onMouseMove,this).off("zoomend",this._onZoomEnd,this)},deleteLastVertex:function(){if(!(this._markers.length<=1)){var t=this._markers.pop(),e=this._poly,i=this._poly.spliceLatLngs(e.getLatLngs().length-1,1)[0];this._markerGroup.removeLayer(t),e.getLatLngs().length<2&&this._map.removeLayer(e),this._vertexChanged(i,!1)}},addVertex:function(t){var e=this._markers.length;return e>0&&!this.options.allowIntersection&&this._poly.newLatLngIntersects(t)?(this._showErrorTooltip(),void 0):(this._errorShown&&this._hideErrorTooltip(),this._markers.push(this._createMarker(t)),this._poly.addLatLng(t),2===this._poly.getLatLngs().length&&this._map.addLayer(this._poly),this._vertexChanged(t,!0),void 0)},_finishShape:function(){var t=this._poly.newLatLngIntersects(this._poly.getLatLngs()[0],!0);return!this.options.allowIntersection&&t||!this._shapeIsValid()?(this._showErrorTooltip(),void 0):(this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable(),void 0)},_shapeIsValid:function(){return!0},_onZoomEnd:function(){this._updateGuide()},_onMouseMove:function(t){var e=t.layerPoint,i=t.latlng;this._currentLatLng=i,this._updateTooltip(i),this._updateGuide(e),this._mouseMarker.setLatLng(i),L.DomEvent.preventDefault(t.originalEvent)},_vertexChanged:function(t,e){this._updateFinishHandler(),this._updateRunningMeasure(t,e),this._clearGuides(),this._updateTooltip()},_onMouseDown:function(t){var e=t.originalEvent;this._mouseDownOrigin=L.point(e.clientX,e.clientY)},_onMouseUp:function(e){if(this._mouseDownOrigin){var i=L.point(e.originalEvent.clientX,e.originalEvent.clientY).distanceTo(this._mouseDownOrigin);Math.abs(i)<9*(t.devicePixelRatio||1)&&this.addVertex(e.latlng)}this._mouseDownOrigin=null},_updateFinishHandler:function(){var t=this._markers.length;t>1&&this._markers[t-1].on("click",this._finishShape,this),t>2&&this._markers[t-2].off("click",this._finishShape,this)},_createMarker:function(t){var e=new L.Marker(t,{icon:this.options.icon,zIndexOffset:2*this.options.zIndexOffset});return this._markerGroup.addLayer(e),e},_updateGuide:function(t){var e=this._markers.length;e>0&&(t=t||this._map.latLngToLayerPoint(this._currentLatLng),this._clearGuides(),this._drawGuide(this._map.latLngToLayerPoint(this._markers[e-1].getLatLng()),t))},_updateTooltip:function(t){var e=this._getTooltipText();t&&this._tooltip.updatePosition(t),this._errorShown||this._tooltip.updateContent(e)},_drawGuide:function(t,e){var i,o,a,s=Math.floor(Math.sqrt(Math.pow(e.x-t.x,2)+Math.pow(e.y-t.y,2))),r=this.options.guidelineDistance,n=this.options.maxGuideLineLength,l=s>n?s-n:r;for(this._guidesContainer||(this._guidesContainer=L.DomUtil.create("div","leaflet-draw-guides",this._overlayPane));s>l;l+=this.options.guidelineDistance)i=l/s,o={x:Math.floor(t.x*(1-i)+i*e.x),y:Math.floor(t.y*(1-i)+i*e.y)},a=L.DomUtil.create("div","leaflet-draw-guide-dash",this._guidesContainer),a.style.backgroundColor=this._errorShown?this.options.drawError.color:this.options.shapeOptions.color,L.DomUtil.setPosition(a,o)},_updateGuideColor:function(t){if(this._guidesContainer)for(var e=0,i=this._guidesContainer.childNodes.length;i>e;e++)this._guidesContainer.childNodes[e].style.backgroundColor=t},_clearGuides:function(){if(this._guidesContainer)for(;this._guidesContainer.firstChild;)this._guidesContainer.removeChild(this._guidesContainer.firstChild)},_getTooltipText:function(){var t,e,i=this.options.showLength;return 0===this._markers.length?t={text:L.drawLocal.draw.handlers.polyline.tooltip.start}:(e=i?this._getMeasurementString():"",t=1===this._markers.length?{text:L.drawLocal.draw.handlers.polyline.tooltip.cont,subtext:e}:{text:L.drawLocal.draw.handlers.polyline.tooltip.end,subtext:e}),t},_updateRunningMeasure:function(t,e){var i,o,a=this._markers.length;1===this._markers.length?this._measurementRunningTotal=0:(i=a-(e?2:1),o=t.distanceTo(this._markers[i].getLatLng()),this._measurementRunningTotal+=o*(e?1:-1))},_getMeasurementString:function(){var t,e=this._currentLatLng,i=this._markers[this._markers.length-1].getLatLng();return t=this._measurementRunningTotal+e.distanceTo(i),L.GeometryUtil.readableDistance(t,this.options.metric)},_showErrorTooltip:function(){this._errorShown=!0,this._tooltip.showAsError().updateContent({text:this.options.drawError.message}),this._updateGuideColor(this.options.drawError.color),this._poly.setStyle({color:this.options.drawError.color}),this._clearHideErrorTimeout(),this._hideErrorTimeout=setTimeout(L.Util.bind(this._hideErrorTooltip,this),this.options.drawError.timeout)},_hideErrorTooltip:function(){this._errorShown=!1,this._clearHideErrorTimeout(),this._tooltip.removeError().updateContent(this._getTooltipText()),this._updateGuideColor(this.options.shapeOptions.color),this._poly.setStyle({color:this.options.shapeOptions.color})},_clearHideErrorTimeout:function(){this._hideErrorTimeout&&(clearTimeout(this._hideErrorTimeout),this._hideErrorTimeout=null)},_cleanUpShape:function(){this._markers.length>1&&this._markers[this._markers.length-1].off("click",this._finishShape,this)},_fireCreatedEvent:function(){var t=new this.Poly(this._poly.getLatLngs(),this.options.shapeOptions);L.Draw.Feature.prototype._fireCreatedEvent.call(this,t)}}),L.Draw.Polygon=L.Draw.Polyline.extend({statics:{TYPE:"polygon"},Poly:L.Polygon,options:{showArea:!1,shapeOptions:{stroke:!0,color:"#f06eaa",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0}},initialize:function(t,e){L.Draw.Polyline.prototype.initialize.call(this,t,e),this.type=L.Draw.Polygon.TYPE},_updateFinishHandler:function(){var t=this._markers.length;1===t&&this._markers[0].on("click",this._finishShape,this),t>2&&(this._markers[t-1].on("dblclick",this._finishShape,this),t>3&&this._markers[t-2].off("dblclick",this._finishShape,this))},_getTooltipText:function(){var t,e;return 0===this._markers.length?t=L.drawLocal.draw.handlers.polygon.tooltip.start:this._markers.length<3?t=L.drawLocal.draw.handlers.polygon.tooltip.cont:(t=L.drawLocal.draw.handlers.polygon.tooltip.end,e=this._getMeasurementString()),{text:t,subtext:e}},_getMeasurementString:function(){var t=this._area;return t?L.GeometryUtil.readableArea(t,this.options.metric):null},_shapeIsValid:function(){return this._markers.length>=3},_vertexChanged:function(t,e){var i;!this.options.allowIntersection&&this.options.showArea&&(i=this._poly.getLatLngs(),this._area=L.GeometryUtil.geodesicArea(i)),L.Draw.Polyline.prototype._vertexChanged.call(this,t,e)},_cleanUpShape:function(){var t=this._markers.length;t>0&&(this._markers[0].off("click",this._finishShape,this),t>2&&this._markers[t-1].off("dblclick",this._finishShape,this))}}),L.SimpleShape={},L.Draw.SimpleShape=L.Draw.Feature.extend({options:{repeatMode:!1},initialize:function(t,e){this._endLabelText=L.drawLocal.draw.handlers.simpleshape.tooltip.end,L.Draw.Feature.prototype.initialize.call(this,t,e)},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._mapDraggable=this._map.dragging.enabled(),this._mapDraggable&&this._map.dragging.disable(),this._container.style.cursor="crosshair",this._tooltip.updateContent({text:this._initialLabelText}),this._map.on("mousedown",this._onMouseDown,this).on("mousemove",this._onMouseMove,this))},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._map&&(this._mapDraggable&&this._map.dragging.enable(),this._container.style.cursor="",this._map.off("mousedown",this._onMouseDown,this).off("mousemove",this._onMouseMove,this),L.DomEvent.off(e,"mouseup",this._onMouseUp,this),this._shape&&(this._map.removeLayer(this._shape),delete this._shape)),this._isDrawing=!1},_onMouseDown:function(t){this._isDrawing=!0,this._startLatLng=t.latlng,L.DomEvent.on(e,"mouseup",this._onMouseUp,this).preventDefault(t.originalEvent)},_onMouseMove:function(t){var e=t.latlng;this._tooltip.updatePosition(e),this._isDrawing&&(this._tooltip.updateContent({text:this._endLabelText}),this._drawShape(e))},_onMouseUp:function(){this._shape&&this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable()}}),L.Draw.Rectangle=L.Draw.SimpleShape.extend({statics:{TYPE:"rectangle"},options:{shapeOptions:{stroke:!0,color:"#f06eaa",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0}},initialize:function(t,e){this.type=L.Draw.Rectangle.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.rectangle.tooltip.start,L.Draw.SimpleShape.prototype.initialize.call(this,t,e)},_drawShape:function(t){this._shape?this._shape.setBounds(new L.LatLngBounds(this._startLatLng,t)):(this._shape=new L.Rectangle(new L.LatLngBounds(this._startLatLng,t),this.options.shapeOptions),this._map.addLayer(this._shape))},_fireCreatedEvent:function(){var t=new L.Rectangle(this._shape.getBounds(),this.options.shapeOptions);L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this,t)}}),L.Draw.Circle=L.Draw.SimpleShape.extend({statics:{TYPE:"circle"},options:{shapeOptions:{stroke:!0,color:"#f06eaa",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0},showRadius:!0,metric:!0},initialize:function(t,e){this.type=L.Draw.Circle.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.circle.tooltip.start,L.Draw.SimpleShape.prototype.initialize.call(this,t,e)},_drawShape:function(t){this._shape?this._shape.setRadius(this._startLatLng.distanceTo(t)):(this._shape=new L.Circle(this._startLatLng,this._startLatLng.distanceTo(t),this.options.shapeOptions),this._map.addLayer(this._shape))},_fireCreatedEvent:function(){var t=new L.Circle(this._startLatLng,this._shape.getRadius(),this.options.shapeOptions);L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this,t)},_onMouseMove:function(t){var e,i=t.latlng,o=this.options.showRadius,a=this.options.metric;this._tooltip.updatePosition(i),this._isDrawing&&(this._drawShape(i),e=this._shape.getRadius().toFixed(1),this._tooltip.updateContent({text:this._endLabelText,subtext:o?"Radius: "+L.GeometryUtil.readableDistance(e,a):""}))}}),L.Draw.Marker=L.Draw.Feature.extend({statics:{TYPE:"marker"},options:{icon:new L.Icon.Default,repeatMode:!1,zIndexOffset:2e3},initialize:function(t,e){this.type=L.Draw.Marker.TYPE,L.Draw.Feature.prototype.initialize.call(this,t,e)},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._tooltip.updateContent({text:L.drawLocal.draw.handlers.marker.tooltip.start}),this._mouseMarker||(this._mouseMarker=L.marker(this._map.getCenter(),{icon:L.divIcon({className:"leaflet-mouse-marker",iconAnchor:[20,20],iconSize:[40,40]}),opacity:0,zIndexOffset:this.options.zIndexOffset})),this._mouseMarker.on("click",this._onClick,this).addTo(this._map),this._map.on("mousemove",this._onMouseMove,this))},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._map&&(this._marker&&(this._marker.off("click",this._onClick,this),this._map.off("click",this._onClick,this).removeLayer(this._marker),delete this._marker),this._mouseMarker.off("click",this._onClick,this),this._map.removeLayer(this._mouseMarker),delete this._mouseMarker,this._map.off("mousemove",this._onMouseMove,this))},_onMouseMove:function(t){var e=t.latlng;this._tooltip.updatePosition(e),this._mouseMarker.setLatLng(e),this._marker?(e=this._mouseMarker.getLatLng(),this._marker.setLatLng(e)):(this._marker=new L.Marker(e,{icon:this.options.icon,zIndexOffset:this.options.zIndexOffset}),this._marker.on("click",this._onClick,this),this._map.on("click",this._onClick,this).addLayer(this._marker))},_onClick:function(){this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable()},_fireCreatedEvent:function(){var t=new L.Marker(this._marker.getLatLng(),{icon:this.options.icon});L.Draw.Feature.prototype._fireCreatedEvent.call(this,t)}}),L.Edit=L.Edit||{},L.Edit.Poly=L.Handler.extend({options:{icon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon"})},initialize:function(t,e){this._poly=t,L.setOptions(this,e)},addHooks:function(){this._poly._map&&(this._markerGroup||this._initMarkers(),this._poly._map.addLayer(this._markerGroup))},removeHooks:function(){this._poly._map&&(this._poly._map.removeLayer(this._markerGroup),delete this._markerGroup,delete this._markers)},updateMarkers:function(){this._markerGroup.clearLayers(),this._initMarkers()},_initMarkers:function(){this._markerGroup||(this._markerGroup=new L.LayerGroup),this._markers=[];var t,e,i,o,a=this._poly._latlngs;for(t=0,i=a.length;i>t;t++)o=this._createMarker(a[t],t),o.on("click",this._onMarkerClick,this),this._markers.push(o);var s,r;for(t=0,e=i-1;i>t;e=t++)(0!==t||L.Polygon&&this._poly instanceof L.Polygon)&&(s=this._markers[e],r=this._markers[t],this._createMiddleMarker(s,r),this._updatePrevNext(s,r))},_createMarker:function(t,e){var i=new L.Marker(t,{draggable:!0,icon:this.options.icon});return i._origLatLng=t,i._index=e,i.on("drag",this._onMarkerDrag,this),i.on("dragend",this._fireEdit,this),this._markerGroup.addLayer(i),i},_removeMarker:function(t){var e=t._index;this._markerGroup.removeLayer(t),this._markers.splice(e,1),this._poly.spliceLatLngs(e,1),this._updateIndexes(e,-1),t.off("drag",this._onMarkerDrag,this).off("dragend",this._fireEdit,this).off("click",this._onMarkerClick,this)},_fireEdit:function(){this._poly.edited=!0,this._poly.fire("edit")},_onMarkerDrag:function(t){var e=t.target;L.extend(e._origLatLng,e._latlng),e._middleLeft&&e._middleLeft.setLatLng(this._getMiddleLatLng(e._prev,e)),e._middleRight&&e._middleRight.setLatLng(this._getMiddleLatLng(e,e._next)),this._poly.redraw()},_onMarkerClick:function(t){var e=L.Polygon&&this._poly instanceof L.Polygon?4:3,i=t.target;this._poly._latlngs.length<e||(this._removeMarker(i),this._updatePrevNext(i._prev,i._next),i._middleLeft&&this._markerGroup.removeLayer(i._middleLeft),i._middleRight&&this._markerGroup.removeLayer(i._middleRight),i._prev&&i._next?this._createMiddleMarker(i._prev,i._next):i._prev?i._next||(i._prev._middleRight=null):i._next._middleLeft=null,this._fireEdit())},_updateIndexes:function(t,e){this._markerGroup.eachLayer(function(i){i._index>t&&(i._index+=e)})},_createMiddleMarker:function(t,e){var i,o,a,s=this._getMiddleLatLng(t,e),r=this._createMarker(s);r.setOpacity(.6),t._middleRight=e._middleLeft=r,o=function(){var o=e._index;r._index=o,r.off("click",i,this).on("click",this._onMarkerClick,this),s.lat=r.getLatLng().lat,s.lng=r.getLatLng().lng,this._poly.spliceLatLngs(o,0,s),this._markers.splice(o,0,r),r.setOpacity(1),this._updateIndexes(o,1),e._index++,this._updatePrevNext(t,r),this._updatePrevNext(r,e),this._poly.fire("editstart")},a=function(){r.off("dragstart",o,this),r.off("dragend",a,this),this._createMiddleMarker(t,r),this._createMiddleMarker(r,e)},i=function(){o.call(this),a.call(this),this._fireEdit()},r.on("click",i,this).on("dragstart",o,this).on("dragend",a,this),this._markerGroup.addLayer(r)},_updatePrevNext:function(t,e){t&&(t._next=e),e&&(e._prev=t)},_getMiddleLatLng:function(t,e){var i=this._poly._map,o=i.project(t.getLatLng()),a=i.project(e.getLatLng());return i.unproject(o._add(a)._divideBy(2))}}),L.Polyline.addInitHook(function(){this.editing||(L.Edit.Poly&&(this.editing=new L.Edit.Poly(this),this.options.editable&&this.editing.enable()),this.on("add",function(){this.editing&&this.editing.enabled()&&this.editing.addHooks()}),this.on("remove",function(){this.editing&&this.editing.enabled()&&this.editing.removeHooks()}))}),L.Edit=L.Edit||{},L.Edit.SimpleShape=L.Handler.extend({options:{moveIcon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-move"}),resizeIcon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-resize"})},initialize:function(t,e){this._shape=t,L.Util.setOptions(this,e)},addHooks:function(){this._shape._map&&(this._map=this._shape._map,this._markerGroup||this._initMarkers(),this._map.addLayer(this._markerGroup))},removeHooks:function(){if(this._shape._map){this._unbindMarker(this._moveMarker);for(var t=0,e=this._resizeMarkers.length;e>t;t++)this._unbindMarker(this._resizeMarkers[t]);this._resizeMarkers=null,this._map.removeLayer(this._markerGroup),delete this._markerGroup}this._map=null},updateMarkers:function(){this._markerGroup.clearLayers(),this._initMarkers()},_initMarkers:function(){this._markerGroup||(this._markerGroup=new L.LayerGroup),this._createMoveMarker(),this._createResizeMarker()},_createMoveMarker:function(){},_createResizeMarker:function(){},_createMarker:function(t,e){var i=new L.Marker(t,{draggable:!0,icon:e,zIndexOffset:10});return this._bindMarker(i),this._markerGroup.addLayer(i),i},_bindMarker:function(t){t.on("dragstart",this._onMarkerDragStart,this).on("drag",this._onMarkerDrag,this).on("dragend",this._onMarkerDragEnd,this)},_unbindMarker:function(t){t.off("dragstart",this._onMarkerDragStart,this).off("drag",this._onMarkerDrag,this).off("dragend",this._onMarkerDragEnd,this)},_onMarkerDragStart:function(t){var e=t.target;e.setOpacity(0),this._shape.fire("editstart")},_fireEdit:function(){this._shape.edited=!0,this._shape.fire("edit")},_onMarkerDrag:function(t){var e=t.target,i=e.getLatLng();e===this._moveMarker?this._move(i):this._resize(i),this._shape.redraw()},_onMarkerDragEnd:function(t){var e=t.target;e.setOpacity(1),this._fireEdit()},_move:function(){},_resize:function(){}}),L.Edit=L.Edit||{},L.Edit.Rectangle=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getBounds(),e=t.getCenter();this._moveMarker=this._createMarker(e,this.options.moveIcon)},_createResizeMarker:function(){var t=this._getCorners();this._resizeMarkers=[];for(var e=0,i=t.length;i>e;e++)this._resizeMarkers.push(this._createMarker(t[e],this.options.resizeIcon)),this._resizeMarkers[e]._cornerIndex=e},_onMarkerDragStart:function(t){L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this,t);var e=this._getCorners(),i=t.target,o=i._cornerIndex;this._oppositeCorner=e[(o+2)%4],this._toggleCornerMarkers(0,o)},_onMarkerDragEnd:function(t){var e,i,o=t.target;o===this._moveMarker&&(e=this._shape.getBounds(),i=e.getCenter(),o.setLatLng(i)),this._toggleCornerMarkers(1),this._repositionCornerMarkers(),L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this,t)},_move:function(t){for(var e,i=this._shape.getLatLngs(),o=this._shape.getBounds(),a=o.getCenter(),s=[],r=0,n=i.length;n>r;r++)e=[i[r].lat-a.lat,i[r].lng-a.lng],s.push([t.lat+e[0],t.lng+e[1]]);this._shape.setLatLngs(s),this._repositionCornerMarkers()},_resize:function(t){var e;this._shape.setBounds(L.latLngBounds(t,this._oppositeCorner)),e=this._shape.getBounds(),this._moveMarker.setLatLng(e.getCenter())},_getCorners:function(){var t=this._shape.getBounds(),e=t.getNorthWest(),i=t.getNorthEast(),o=t.getSouthEast(),a=t.getSouthWest();return[e,i,o,a]},_toggleCornerMarkers:function(t){for(var e=0,i=this._resizeMarkers.length;i>e;e++)this._resizeMarkers[e].setOpacity(t)},_repositionCornerMarkers:function(){for(var t=this._getCorners(),e=0,i=this._resizeMarkers.length;i>e;e++)this._resizeMarkers[e].setLatLng(t[e])}}),L.Rectangle.addInitHook(function(){L.Edit.Rectangle&&(this.editing=new L.Edit.Rectangle(this),this.options.editable&&this.editing.enable())}),L.Edit=L.Edit||{},L.Edit.Circle=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getLatLng();this._moveMarker=this._createMarker(t,this.options.moveIcon)},_createResizeMarker:function(){var t=this._shape.getLatLng(),e=this._getResizeMarkerPoint(t);this._resizeMarkers=[],this._resizeMarkers.push(this._createMarker(e,this.options.resizeIcon))},_getResizeMarkerPoint:function(t){var e=this._shape._radius*Math.cos(Math.PI/4),i=this._map.project(t);return this._map.unproject([i.x+e,i.y-e])},_move:function(t){var e=this._getResizeMarkerPoint(t);this._resizeMarkers[0].setLatLng(e),this._shape.setLatLng(t)},_resize:function(t){var e=this._moveMarker.getLatLng(),i=e.distanceTo(t);this._shape.setRadius(i)}}),L.Circle.addInitHook(function(){L.Edit.Circle&&(this.editing=new L.Edit.Circle(this),this.options.editable&&this.editing.enable()),this.on("add",function(){this.editing&&this.editing.enabled()&&this.editing.addHooks()}),this.on("remove",function(){this.editing&&this.editing.enabled()&&this.editing.removeHooks()})}),L.LatLngUtil={cloneLatLngs:function(t){for(var e=[],i=0,o=t.length;o>i;i++)e.push(this.cloneLatLng(t[i]));return e},cloneLatLng:function(t){return L.latLng(t.lat,t.lng)}},L.GeometryUtil=L.extend(L.GeometryUtil||{},{geodesicArea:function(t){var e,i,o=t.length,a=0,s=L.LatLng.DEG_TO_RAD;if(o>2){for(var r=0;o>r;r++)e=t[r],i=t[(r+1)%o],a+=(i.lng-e.lng)*s*(2+Math.sin(e.lat*s)+Math.sin(i.lat*s));a=6378137*a*6378137/2}return Math.abs(a)},readableArea:function(t,e){var i;return e?i=t>=1e4?(1e-4*t).toFixed(2)+" ha":t.toFixed(2)+" m&sup2;":(t*=.836127,i=t>=3097600?(t/3097600).toFixed(2)+" mi&sup2;":t>=4840?(t/4840).toFixed(2)+" acres":Math.ceil(t)+" yd&sup2;"),i},readableDistance:function(t,e){var i;return e?i=t>1e3?(t/1e3).toFixed(2)+" km":Math.ceil(t)+" m":(t*=1.09361,i=t>1760?(t/1760).toFixed(2)+" miles":Math.ceil(t)+" yd"),i}}),L.Util.extend(L.LineUtil,{segmentsIntersect:function(t,e,i,o){return this._checkCounterclockwise(t,i,o)!==this._checkCounterclockwise(e,i,o)&&this._checkCounterclockwise(t,e,i)!==this._checkCounterclockwise(t,e,o)},_checkCounterclockwise:function(t,e,i){return(i.y-t.y)*(e.x-t.x)>(e.y-t.y)*(i.x-t.x)}}),L.Polyline.include({intersects:function(){var t,e,i,o=this._originalPoints,a=o?o.length:0;if(this._tooFewPointsForIntersection())return!1;for(t=a-1;t>=3;t--)if(e=o[t-1],i=o[t],this._lineSegmentsIntersectsRange(e,i,t-2))return!0;return!1},newLatLngIntersects:function(t,e){return this._map?this.newPointIntersects(this._map.latLngToLayerPoint(t),e):!1},newPointIntersects:function(t,e){var i=this._originalPoints,o=i?i.length:0,a=i?i[o-1]:null,s=o-2;return this._tooFewPointsForIntersection(1)?!1:this._lineSegmentsIntersectsRange(a,t,s,e?1:0)},_tooFewPointsForIntersection:function(t){var e=this._originalPoints,i=e?e.length:0;return i+=t||0,!this._originalPoints||3>=i},_lineSegmentsIntersectsRange:function(t,e,i,o){var a,s,r=this._originalPoints;o=o||0;for(var n=i;n>o;n--)if(a=r[n-1],s=r[n],L.LineUtil.segmentsIntersect(t,e,a,s))return!0;return!1}}),L.Polygon.include({intersects:function(){var t,e,i,o,a,s=this._originalPoints;return this._tooFewPointsForIntersection()?!1:(t=L.Polyline.prototype.intersects.call(this))?!0:(e=s.length,i=s[0],o=s[e-1],a=e-2,this._lineSegmentsIntersectsRange(o,i,a,1))}}),L.Control.Draw=L.Control.extend({options:{position:"topleft",draw:{},edit:!1},initialize:function(t){if(L.version<"0.7")throw new Error("Leaflet.draw 0.2.3+ requires Leaflet 0.7.0+. Download latest from https://github.com/Leaflet/Leaflet/");L.Control.prototype.initialize.call(this,t);var e,i;this._toolbars={},L.DrawToolbar&&this.options.draw&&(i=new L.DrawToolbar(this.options.draw),e=L.stamp(i),this._toolbars[e]=i,this._toolbars[e].on("enable",this._toolbarEnabled,this)),L.EditToolbar&&this.options.edit&&(i=new L.EditToolbar(this.options.edit),e=L.stamp(i),this._toolbars[e]=i,this._toolbars[e].on("enable",this._toolbarEnabled,this))},onAdd:function(t){var e,i=L.DomUtil.create("div","leaflet-draw"),o=!1,a="leaflet-draw-toolbar-top";for(var s in this._toolbars)this._toolbars.hasOwnProperty(s)&&(e=this._toolbars[s].addToolbar(t),e&&(o||(L.DomUtil.hasClass(e,a)||L.DomUtil.addClass(e.childNodes[0],a),o=!0),i.appendChild(e)));return i},onRemove:function(){for(var t in this._toolbars)this._toolbars.hasOwnProperty(t)&&this._toolbars[t].removeToolbar()},setDrawingOptions:function(t){for(var e in this._toolbars)this._toolbars[e]instanceof L.DrawToolbar&&this._toolbars[e].setOptions(t)},_toolbarEnabled:function(t){var e=""+L.stamp(t.target);for(var i in this._toolbars)this._toolbars.hasOwnProperty(i)&&i!==e&&this._toolbars[i].disable()}}),L.Map.mergeOptions({drawControlTooltips:!0,drawControl:!1}),L.Map.addInitHook(function(){this.options.drawControl&&(this.drawControl=new L.Control.Draw,this.addControl(this.drawControl))}),L.Toolbar=L.Class.extend({includes:[L.Mixin.Events],initialize:function(t){L.setOptions(this,t),this._modes={},this._actionButtons=[],this._activeMode=null},enabled:function(){return null!==this._activeMode},disable:function(){this.enabled()&&this._activeMode.handler.disable()},addToolbar:function(t){var e,i=L.DomUtil.create("div","leaflet-draw-section"),o=0,a=this._toolbarClass||"",s=this.getModeHandlers(t);for(this._toolbarContainer=L.DomUtil.create("div","leaflet-draw-toolbar leaflet-bar"),this._map=t,e=0;e<s.length;e++)s[e].enabled&&this._initModeHandler(s[e].handler,this._toolbarContainer,o++,a,s[e].title);return o?(this._lastButtonIndex=--o,this._actionsContainer=L.DomUtil.create("ul","leaflet-draw-actions"),i.appendChild(this._toolbarContainer),i.appendChild(this._actionsContainer),i):void 0},removeToolbar:function(){for(var t in this._modes)this._modes.hasOwnProperty(t)&&(this._disposeButton(this._modes[t].button,this._modes[t].handler.enable,this._modes[t].handler),this._modes[t].handler.disable(),this._modes[t].handler.off("enabled",this._handlerActivated,this).off("disabled",this._handlerDeactivated,this));this._modes={};for(var e=0,i=this._actionButtons.length;i>e;e++)this._disposeButton(this._actionButtons[e].button,this._actionButtons[e].callback,this);this._actionButtons=[],this._actionsContainer=null},_initModeHandler:function(t,e,i,o,a){var s=t.type;this._modes[s]={},this._modes[s].handler=t,this._modes[s].button=this._createButton({title:a,className:o+"-"+s,container:e,callback:this._modes[s].handler.enable,context:this._modes[s].handler}),this._modes[s].buttonIndex=i,this._modes[s].handler.on("enabled",this._handlerActivated,this).on("disabled",this._handlerDeactivated,this)},_createButton:function(t){var e=L.DomUtil.create("a",t.className||"",t.container);return e.href="#",t.text&&(e.innerHTML=t.text),t.title&&(e.title=t.title),L.DomEvent.on(e,"click",L.DomEvent.stopPropagation).on(e,"mousedown",L.DomEvent.stopPropagation).on(e,"dblclick",L.DomEvent.stopPropagation).on(e,"click",L.DomEvent.preventDefault).on(e,"click",t.callback,t.context),e},_disposeButton:function(t,e){L.DomEvent.off(t,"click",L.DomEvent.stopPropagation).off(t,"mousedown",L.DomEvent.stopPropagation).off(t,"dblclick",L.DomEvent.stopPropagation).off(t,"click",L.DomEvent.preventDefault).off(t,"click",e)},_handlerActivated:function(t){this.disable(),this._activeMode=this._modes[t.handler],L.DomUtil.addClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._showActionsToolbar(),this.fire("enable")},_handlerDeactivated:function(){this._hideActionsToolbar(),L.DomUtil.removeClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._activeMode=null,this.fire("disable")},_createActions:function(t){var e,i,o,a,s=this._actionsContainer,r=this.getActions(t),n=r.length;for(i=0,o=this._actionButtons.length;o>i;i++)this._disposeButton(this._actionButtons[i].button,this._actionButtons[i].callback);for(this._actionButtons=[];s.firstChild;)s.removeChild(s.firstChild);for(var l=0;n>l;l++)"enabled"in r[l]&&!r[l].enabled||(e=L.DomUtil.create("li","",s),a=this._createButton({title:r[l].title,text:r[l].text,container:e,callback:r[l].callback,context:r[l].context}),this._actionButtons.push({button:a,callback:r[l].callback}))},_showActionsToolbar:function(){var t=this._activeMode.buttonIndex,e=this._lastButtonIndex,i=this._activeMode.button.offsetTop-1;this._createActions(this._activeMode.handler),this._actionsContainer.style.top=i+"px",0===t&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-top")),t===e&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-bottom")),this._actionsContainer.style.display="block"
 },_hideActionsToolbar:function(){this._actionsContainer.style.display="none",L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-top"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-bottom")}}),L.Tooltip=L.Class.extend({initialize:function(t){this._map=t,this._popupPane=t._panes.popupPane,this._container=t.options.drawControlTooltips?L.DomUtil.create("div","leaflet-draw-tooltip",this._popupPane):null,this._singleLineLabel=!1},dispose:function(){this._container&&(this._popupPane.removeChild(this._container),this._container=null)},updateContent:function(t){return this._container?(t.subtext=t.subtext||"",0!==t.subtext.length||this._singleLineLabel?t.subtext.length>0&&this._singleLineLabel&&(L.DomUtil.removeClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!1):(L.DomUtil.addClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!0),this._container.innerHTML=(t.subtext.length>0?'<span class="leaflet-draw-tooltip-subtext">'+t.subtext+"</span><br />":"")+"<span>"+t.text+"</span>",this):this},updatePosition:function(t){var e=this._map.latLngToLayerPoint(t),i=this._container;return this._container&&(i.style.visibility="inherit",L.DomUtil.setPosition(i,e)),this},showAsError:function(){return this._container&&L.DomUtil.addClass(this._container,"leaflet-error-draw-tooltip"),this},removeError:function(){return this._container&&L.DomUtil.removeClass(this._container,"leaflet-error-draw-tooltip"),this}}),L.DrawToolbar=L.Toolbar.extend({options:{polyline:{},polygon:{},rectangle:{},circle:{},marker:{}},initialize:function(t){for(var e in this.options)this.options.hasOwnProperty(e)&&t[e]&&(t[e]=L.extend({},this.options[e],t[e]));this._toolbarClass="leaflet-draw-draw",L.Toolbar.prototype.initialize.call(this,t)},getModeHandlers:function(t){return[{enabled:this.options.polyline,handler:new L.Draw.Polyline(t,this.options.polyline),title:L.drawLocal.draw.toolbar.buttons.polyline},{enabled:this.options.polygon,handler:new L.Draw.Polygon(t,this.options.polygon),title:L.drawLocal.draw.toolbar.buttons.polygon},{enabled:this.options.rectangle,handler:new L.Draw.Rectangle(t,this.options.rectangle),title:L.drawLocal.draw.toolbar.buttons.rectangle},{enabled:this.options.circle,handler:new L.Draw.Circle(t,this.options.circle),title:L.drawLocal.draw.toolbar.buttons.circle},{enabled:this.options.marker,handler:new L.Draw.Marker(t,this.options.marker),title:L.drawLocal.draw.toolbar.buttons.marker}]},getActions:function(t){return[{enabled:t.deleteLastVertex,title:L.drawLocal.draw.toolbar.undo.title,text:L.drawLocal.draw.toolbar.undo.text,callback:t.deleteLastVertex,context:t},{title:L.drawLocal.draw.toolbar.actions.title,text:L.drawLocal.draw.toolbar.actions.text,callback:this.disable,context:this}]},setOptions:function(t){L.setOptions(this,t);for(var e in this._modes)this._modes.hasOwnProperty(e)&&t.hasOwnProperty(e)&&this._modes[e].handler.setOptions(t[e])}}),L.EditToolbar=L.Toolbar.extend({options:{edit:{selectedPathOptions:{color:"#fe57a1",opacity:.6,dashArray:"10, 10",fill:!0,fillColor:"#fe57a1",fillOpacity:.1}},remove:{},featureGroup:null},initialize:function(t){t.edit&&("undefined"==typeof t.edit.selectedPathOptions&&(t.edit.selectedPathOptions=this.options.edit.selectedPathOptions),t.edit=L.extend({},this.options.edit,t.edit)),t.remove&&(t.remove=L.extend({},this.options.remove,t.remove)),this._toolbarClass="leaflet-draw-edit",L.Toolbar.prototype.initialize.call(this,t),this._selectedFeatureCount=0},getModeHandlers:function(t){var e=this.options.featureGroup;return[{enabled:this.options.edit,handler:new L.EditToolbar.Edit(t,{featureGroup:e,selectedPathOptions:this.options.edit.selectedPathOptions}),title:L.drawLocal.edit.toolbar.buttons.edit},{enabled:this.options.remove,handler:new L.EditToolbar.Delete(t,{featureGroup:e}),title:L.drawLocal.edit.toolbar.buttons.remove}]},getActions:function(){return[{title:L.drawLocal.edit.toolbar.actions.save.title,text:L.drawLocal.edit.toolbar.actions.save.text,callback:this._save,context:this},{title:L.drawLocal.edit.toolbar.actions.cancel.title,text:L.drawLocal.edit.toolbar.actions.cancel.text,callback:this.disable,context:this}]},addToolbar:function(t){var e=L.Toolbar.prototype.addToolbar.call(this,t);return this._checkDisabled(),this.options.featureGroup.on("layeradd layerremove",this._checkDisabled,this),e},removeToolbar:function(){this.options.featureGroup.off("layeradd layerremove",this._checkDisabled,this),L.Toolbar.prototype.removeToolbar.call(this)},disable:function(){this.enabled()&&(this._activeMode.handler.revertLayers(),L.Toolbar.prototype.disable.call(this))},_save:function(){this._activeMode.handler.save(),this._activeMode.handler.disable()},_checkDisabled:function(){var t,e=this.options.featureGroup,i=0!==e.getLayers().length;this.options.edit&&(t=this._modes[L.EditToolbar.Edit.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.edit:L.drawLocal.edit.toolbar.buttons.editDisabled)),this.options.remove&&(t=this._modes[L.EditToolbar.Delete.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.remove:L.drawLocal.edit.toolbar.buttons.removeDisabled))}}),L.EditToolbar.Edit=L.Handler.extend({statics:{TYPE:"edit"},includes:L.Mixin.Events,initialize:function(t,e){if(L.Handler.prototype.initialize.call(this,t),this._selectedPathOptions=e.selectedPathOptions,this._featureGroup=e.featureGroup,!(this._featureGroup instanceof L.FeatureGroup))throw new Error("options.featureGroup must be a L.FeatureGroup");this._uneditedLayerProps={},this.type=L.EditToolbar.Edit.TYPE},enable:function(){!this._enabled&&this._hasAvailableLayers()&&(this.fire("enabled",{handler:this.type}),this._map.fire("draw:editstart",{handler:this.type}),L.Handler.prototype.enable.call(this),this._featureGroup.on("layeradd",this._enableLayerEdit,this).on("layerremove",this._disableLayerEdit,this))},disable:function(){this._enabled&&(this._featureGroup.off("layeradd",this._enableLayerEdit,this).off("layerremove",this._disableLayerEdit,this),L.Handler.prototype.disable.call(this),this._map.fire("draw:editstop",{handler:this.type}),this.fire("disabled",{handler:this.type}))},addHooks:function(){var t=this._map;t&&(t.getContainer().focus(),this._featureGroup.eachLayer(this._enableLayerEdit,this),this._tooltip=new L.Tooltip(this._map),this._tooltip.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext}),this._map.on("mousemove",this._onMouseMove,this))},removeHooks:function(){this._map&&(this._featureGroup.eachLayer(this._disableLayerEdit,this),this._uneditedLayerProps={},this._tooltip.dispose(),this._tooltip=null,this._map.off("mousemove",this._onMouseMove,this))},revertLayers:function(){this._featureGroup.eachLayer(function(t){this._revertLayer(t)},this)},save:function(){var t=new L.LayerGroup;this._featureGroup.eachLayer(function(e){e.edited&&(t.addLayer(e),e.edited=!1)}),this._map.fire("draw:edited",{layers:t})},_backupLayer:function(t){var e=L.Util.stamp(t);this._uneditedLayerProps[e]||(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?this._uneditedLayerProps[e]={latlngs:L.LatLngUtil.cloneLatLngs(t.getLatLngs())}:t instanceof L.Circle?this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng()),radius:t.getRadius()}:t instanceof L.Marker&&(this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng())}))},_revertLayer:function(t){var e=L.Util.stamp(t);t.edited=!1,this._uneditedLayerProps.hasOwnProperty(e)&&(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?t.setLatLngs(this._uneditedLayerProps[e].latlngs):t instanceof L.Circle?(t.setLatLng(this._uneditedLayerProps[e].latlng),t.setRadius(this._uneditedLayerProps[e].radius)):t instanceof L.Marker&&t.setLatLng(this._uneditedLayerProps[e].latlng))},_toggleMarkerHighlight:function(t){if(t._icon){var e=t._icon;e.style.display="none",L.DomUtil.hasClass(e,"leaflet-edit-marker-selected")?(L.DomUtil.removeClass(e,"leaflet-edit-marker-selected"),this._offsetMarker(e,-4)):(L.DomUtil.addClass(e,"leaflet-edit-marker-selected"),this._offsetMarker(e,4)),e.style.display=""}},_offsetMarker:function(t,e){var i=parseInt(t.style.marginTop,10)-e,o=parseInt(t.style.marginLeft,10)-e;t.style.marginTop=i+"px",t.style.marginLeft=o+"px"},_enableLayerEdit:function(t){var e,i=t.layer||t.target||t,o=i instanceof L.Marker;(!o||i._icon)&&(this._backupLayer(i),this._selectedPathOptions&&(e=L.Util.extend({},this._selectedPathOptions),o?this._toggleMarkerHighlight(i):(i.options.previousOptions=L.Util.extend({dashArray:null},i.options),i instanceof L.Circle||i instanceof L.Polygon||i instanceof L.Rectangle||(e.fill=!1),i.setStyle(e))),o?(i.dragging.enable(),i.on("dragend",this._onMarkerDragEnd)):i.editing.enable())},_disableLayerEdit:function(t){var e=t.layer||t.target||t;e.edited=!1,this._selectedPathOptions&&(e instanceof L.Marker?this._toggleMarkerHighlight(e):(e.setStyle(e.options.previousOptions),delete e.options.previousOptions)),e instanceof L.Marker?(e.dragging.disable(),e.off("dragend",this._onMarkerDragEnd,this)):e.editing.disable()},_onMarkerDragEnd:function(t){var e=t.target;e.edited=!0},_onMouseMove:function(t){this._tooltip.updatePosition(t.latlng)},_hasAvailableLayers:function(){return 0!==this._featureGroup.getLayers().length}}),L.EditToolbar.Delete=L.Handler.extend({statics:{TYPE:"remove"},includes:L.Mixin.Events,initialize:function(t,e){if(L.Handler.prototype.initialize.call(this,t),L.Util.setOptions(this,e),this._deletableLayers=this.options.featureGroup,!(this._deletableLayers instanceof L.FeatureGroup))throw new Error("options.featureGroup must be a L.FeatureGroup");this.type=L.EditToolbar.Delete.TYPE},enable:function(){!this._enabled&&this._hasAvailableLayers()&&(this.fire("enabled",{handler:this.type}),this._map.fire("draw:deletestart",{handler:this.type}),L.Handler.prototype.enable.call(this),this._deletableLayers.on("layeradd",this._enableLayerDelete,this).on("layerremove",this._disableLayerDelete,this))},disable:function(){this._enabled&&(this._deletableLayers.off("layeradd",this._enableLayerDelete,this).off("layerremove",this._disableLayerDelete,this),L.Handler.prototype.disable.call(this),this._map.fire("draw:deletestop",{handler:this.type}),this.fire("disabled",{handler:this.type}))},addHooks:function(){var t=this._map;t&&(t.getContainer().focus(),this._deletableLayers.eachLayer(this._enableLayerDelete,this),this._deletedLayers=new L.layerGroup,this._tooltip=new L.Tooltip(this._map),this._tooltip.updateContent({text:L.drawLocal.edit.handlers.remove.tooltip.text}),this._map.on("mousemove",this._onMouseMove,this))},removeHooks:function(){this._map&&(this._deletableLayers.eachLayer(this._disableLayerDelete,this),this._deletedLayers=null,this._tooltip.dispose(),this._tooltip=null,this._map.off("mousemove",this._onMouseMove,this))},revertLayers:function(){this._deletedLayers.eachLayer(function(t){this._deletableLayers.addLayer(t)},this)},save:function(){this._map.fire("draw:deleted",{layers:this._deletedLayers})},_enableLayerDelete:function(t){var e=t.layer||t.target||t;e.on("click",this._removeLayer,this)},_disableLayerDelete:function(t){var e=t.layer||t.target||t;e.off("click",this._removeLayer,this),this._deletedLayers.removeLayer(e)},_removeLayer:function(t){var e=t.layer||t.target||t;this._deletableLayers.removeLayer(e),this._deletedLayers.addLayer(e)},_onMouseMove:function(t){this._tooltip.updatePosition(t.latlng)},_hasAvailableLayers:function(){return 0!==this._deletableLayers.getLayers().length}})}(window,document);
-},{}],4:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 /*
  Leaflet, a JavaScript library for mobile-friendly interactive maps. http://leafletjs.com
  (c) 2010-2013, Vladimir Agafonkin
@@ -9687,7 +9771,7 @@ L.Map.include({
 
 
 }(window, document));
-},{}],5:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var mgrs = require('mgrs');
 
 function Point(x, y, z) {
@@ -9723,7 +9807,7 @@ Point.prototype.toMGRS = function(accuracy) {
   return mgrs.forward([this.x, this.y], accuracy);
 };
 module.exports = Point;
-},{"mgrs":71}],6:[function(require,module,exports){
+},{"mgrs":75}],10:[function(require,module,exports){
 var parseCode = require("./parseCode");
 var extend = require('./extend');
 var projections = require('./projections');
@@ -9758,7 +9842,7 @@ Projection.projections = projections;
 Projection.projections.start();
 module.exports = Projection;
 
-},{"./deriveConstants":36,"./extend":37,"./parseCode":41,"./projections":43}],7:[function(require,module,exports){
+},{"./deriveConstants":40,"./extend":41,"./parseCode":45,"./projections":47}],11:[function(require,module,exports){
 module.exports = function(crs, denorm, point) {
   var xin = point.x,
     yin = point.y,
@@ -9811,14 +9895,14 @@ module.exports = function(crs, denorm, point) {
   return point;
 };
 
-},{}],8:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var HALF_PI = Math.PI/2;
 var sign = require('./sign');
 
 module.exports = function(x) {
   return (Math.abs(x) < HALF_PI) ? x : (x - (sign(x) * Math.PI));
 };
-},{"./sign":25}],9:[function(require,module,exports){
+},{"./sign":29}],13:[function(require,module,exports){
 var TWO_PI = Math.PI * 2;
 // SPI is slightly greater than Math.PI, so values that exceed the -180..180
 // degree range by a tiny amount don't get wrapped. This prevents points that
@@ -9830,35 +9914,35 @@ var sign = require('./sign');
 module.exports = function(x) {
   return (Math.abs(x) <= SPI) ? x : (x - (sign(x) * TWO_PI));
 };
-},{"./sign":25}],10:[function(require,module,exports){
+},{"./sign":29}],14:[function(require,module,exports){
 module.exports = function(x) {
   if (Math.abs(x) > 1) {
     x = (x > 1) ? 1 : -1;
   }
   return Math.asin(x);
 };
-},{}],11:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 module.exports = function(x) {
   return (1 - 0.25 * x * (1 + x / 16 * (3 + 1.25 * x)));
 };
-},{}],12:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 module.exports = function(x) {
   return (0.375 * x * (1 + 0.25 * x * (1 + 0.46875 * x)));
 };
-},{}],13:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 module.exports = function(x) {
   return (0.05859375 * x * x * (1 + 0.75 * x));
 };
-},{}],14:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 module.exports = function(x) {
   return (x * x * x * (35 / 3072));
 };
-},{}],15:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 module.exports = function(a, e, sinphi) {
   var temp = e * sinphi;
   return a / Math.sqrt(1 - temp * temp);
 };
-},{}],16:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 module.exports = function(ml, e0, e1, e2, e3) {
   var phi;
   var dphi;
@@ -9875,7 +9959,7 @@ module.exports = function(ml, e0, e1, e2, e3) {
   //..reportError("IMLFN-CONV:Latitude failed to converge after 15 iterations");
   return NaN;
 };
-},{}],17:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 var HALF_PI = Math.PI/2;
 
 module.exports = function(eccent, q) {
@@ -9908,16 +9992,16 @@ module.exports = function(eccent, q) {
   //console.log("IQSFN-CONV:Latitude failed to converge after 30 iterations");
   return NaN;
 };
-},{}],18:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 module.exports = function(e0, e1, e2, e3, phi) {
   return (e0 * phi - e1 * Math.sin(2 * phi) + e2 * Math.sin(4 * phi) - e3 * Math.sin(6 * phi));
 };
-},{}],19:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 module.exports = function(eccent, sinphi, cosphi) {
   var con = eccent * sinphi;
   return cosphi / (Math.sqrt(1 - con * con));
 };
-},{}],20:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var HALF_PI = Math.PI/2;
 module.exports = function(eccent, ts) {
   var eccnth = 0.5 * eccent;
@@ -9934,7 +10018,7 @@ module.exports = function(eccent, ts) {
   //console.log("phi2z has NoConvergence");
   return -9999;
 };
-},{}],21:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 var C00 = 1;
 var C02 = 0.25;
 var C04 = 0.046875;
@@ -9959,7 +10043,7 @@ module.exports = function(es) {
   en[4] = t * es * C88;
   return en;
 };
-},{}],22:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 var pj_mlfn = require("./pj_mlfn");
 var EPSLN = 1.0e-10;
 var MAX_ITER = 20;
@@ -9980,13 +10064,13 @@ module.exports = function(arg, es, en) {
   //..reportError("cass:pj_inv_mlfn: Convergence error");
   return phi;
 };
-},{"./pj_mlfn":23}],23:[function(require,module,exports){
+},{"./pj_mlfn":27}],27:[function(require,module,exports){
 module.exports = function(phi, sphi, cphi, en) {
   cphi *= sphi;
   sphi *= sphi;
   return (en[0] * phi - cphi * (en[1] + sphi * (en[2] + sphi * (en[3] + sphi * en[4]))));
 };
-},{}],24:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 module.exports = function(eccent, sinphi) {
   var con;
   if (eccent > 1.0e-7) {
@@ -9997,15 +10081,15 @@ module.exports = function(eccent, sinphi) {
     return (2 * sinphi);
   }
 };
-},{}],25:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 module.exports = function(x) {
   return x<0 ? -1 : 1;
 };
-},{}],26:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 module.exports = function(esinp, exp) {
   return (Math.pow((1 - esinp) / (1 + esinp), exp));
 };
-},{}],27:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 module.exports = function (array){
   var out = {
     x: array[0],
@@ -10019,7 +10103,7 @@ module.exports = function (array){
   }
   return out;
 };
-},{}],28:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 var HALF_PI = Math.PI/2;
 
 module.exports = function(eccent, phi, sinphi) {
@@ -10028,7 +10112,7 @@ module.exports = function(eccent, phi, sinphi) {
   con = Math.pow(((1 - con) / (1 + con)), com);
   return (Math.tan(0.5 * (HALF_PI - phi)) / con);
 };
-},{}],29:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 exports.wgs84 = {
   towgs84: "0,0,0",
   ellipse: "WGS84",
@@ -10109,7 +10193,7 @@ exports.rnb72 = {
   ellipse: "intl",
   datumName: "Reseau National Belge 1972"
 };
-},{}],30:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 exports.MERIT = {
   a: 6378137.0,
   rf: 298.257,
@@ -10325,7 +10409,7 @@ exports.sphere = {
   b: 6370997.0,
   ellipseName: "Normal Sphere (r=6370997)"
 };
-},{}],31:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 exports.greenwich = 0.0; //"0dE",
 exports.lisbon = -9.131906111111; //"9d07'54.862\"W",
 exports.paris = 2.337229166667; //"2d20'14.025\"E",
@@ -10339,7 +10423,7 @@ exports.brussels = 4.367975; //"4d22'4.71\"E",
 exports.stockholm = 18.058277777778; //"18d3'29.8\"E",
 exports.athens = 23.7163375; //"23d42'58.815\"E",
 exports.oslo = 10.722916666667; //"10d43'22.5\"E"
-},{}],32:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 var proj = require('./Proj');
 var transform = require('./transform');
 var wgs84 = proj('WGS84');
@@ -10404,7 +10488,7 @@ function proj4(fromProj, toProj, coord) {
   }
 }
 module.exports = proj4;
-},{"./Proj":6,"./transform":69}],33:[function(require,module,exports){
+},{"./Proj":10,"./transform":73}],37:[function(require,module,exports){
 var HALF_PI = Math.PI/2;
 var PJD_3PARAM = 1;
 var PJD_7PARAM = 2;
@@ -10810,7 +10894,7 @@ datum.prototype = {
 */
 module.exports = datum;
 
-},{}],34:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 var PJD_3PARAM = 1;
 var PJD_7PARAM = 2;
 var PJD_GRIDSHIFT = 3;
@@ -10911,7 +10995,7 @@ module.exports = function(source, dest, point) {
 };
 
 
-},{}],35:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 var globals = require('./global');
 var parseProj = require('./projString');
 var wkt = require('./wkt');
@@ -10968,7 +11052,7 @@ function defs(name) {
 globals(defs);
 module.exports = defs;
 
-},{"./global":38,"./projString":42,"./wkt":70}],36:[function(require,module,exports){
+},{"./global":42,"./projString":46,"./wkt":74}],40:[function(require,module,exports){
 var Datum = require('./constants/Datum');
 var Ellipsoid = require('./constants/Ellipsoid');
 var extend = require('./extend');
@@ -11026,7 +11110,7 @@ module.exports = function(json) {
   return json;
 };
 
-},{"./constants/Datum":29,"./constants/Ellipsoid":30,"./datum":33,"./extend":37}],37:[function(require,module,exports){
+},{"./constants/Datum":33,"./constants/Ellipsoid":34,"./datum":37,"./extend":41}],41:[function(require,module,exports){
 module.exports = function(destination, source) {
   destination = destination || {};
   var value, property;
@@ -11042,7 +11126,7 @@ module.exports = function(destination, source) {
   return destination;
 };
 
-},{}],38:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 module.exports = function(defs) {
   defs('EPSG:4326', "+title=WGS 84 (long/lat) +proj=longlat +ellps=WGS84 +datum=WGS84 +units=degrees");
   defs('EPSG:4269', "+title=NAD83 (long/lat) +proj=longlat +a=6378137.0 +b=6356752.31414036 +ellps=GRS80 +datum=NAD83 +units=degrees");
@@ -11055,7 +11139,7 @@ module.exports = function(defs) {
   defs['EPSG:102113'] = defs['EPSG:3857'];
 };
 
-},{}],39:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 var projs = [
   require('./projections/tmerc'),
   require('./projections/utm'),
@@ -11085,7 +11169,7 @@ module.exports = function(proj4){
     proj4.Proj.projections.add(proj);
   });
 };
-},{"./projections/aea":44,"./projections/aeqd":45,"./projections/cass":46,"./projections/cea":47,"./projections/eqc":48,"./projections/eqdc":49,"./projections/gnom":51,"./projections/krovak":52,"./projections/laea":53,"./projections/lcc":54,"./projections/mill":57,"./projections/moll":58,"./projections/nzmg":59,"./projections/omerc":60,"./projections/poly":61,"./projections/sinu":62,"./projections/somerc":63,"./projections/stere":64,"./projections/sterea":65,"./projections/tmerc":66,"./projections/utm":67,"./projections/vandg":68}],40:[function(require,module,exports){
+},{"./projections/aea":48,"./projections/aeqd":49,"./projections/cass":50,"./projections/cea":51,"./projections/eqc":52,"./projections/eqdc":53,"./projections/gnom":55,"./projections/krovak":56,"./projections/laea":57,"./projections/lcc":58,"./projections/mill":61,"./projections/moll":62,"./projections/nzmg":63,"./projections/omerc":64,"./projections/poly":65,"./projections/sinu":66,"./projections/somerc":67,"./projections/stere":68,"./projections/sterea":69,"./projections/tmerc":70,"./projections/utm":71,"./projections/vandg":72}],44:[function(require,module,exports){
 var proj4 = require('./core');
 proj4.defaultDatum = 'WGS84'; //default datum
 proj4.Proj = require('./Proj');
@@ -11098,7 +11182,7 @@ proj4.mgrs = require('mgrs');
 proj4.version = require('../package.json').version;
 require('./includedProjections')(proj4);
 module.exports = proj4;
-},{"../package.json":72,"./Point":5,"./Proj":6,"./common/toPoint":27,"./core":32,"./defs":35,"./includedProjections":39,"./transform":69,"mgrs":71}],41:[function(require,module,exports){
+},{"../package.json":76,"./Point":9,"./Proj":10,"./common/toPoint":31,"./core":36,"./defs":39,"./includedProjections":43,"./transform":73,"mgrs":75}],45:[function(require,module,exports){
 var defs = require('./defs');
 var wkt = require('./wkt');
 var projStr = require('./projString');
@@ -11135,7 +11219,7 @@ function parse(code){
 }
 
 module.exports = parse;
-},{"./defs":35,"./projString":42,"./wkt":70}],42:[function(require,module,exports){
+},{"./defs":39,"./projString":46,"./wkt":74}],46:[function(require,module,exports){
 var D2R = 0.01745329251994329577;
 var PrimeMeridian = require('./constants/PrimeMeridian');
 
@@ -11262,7 +11346,7 @@ module.exports = function(defData) {
   return self;
 };
 
-},{"./constants/PrimeMeridian":31}],43:[function(require,module,exports){
+},{"./constants/PrimeMeridian":35}],47:[function(require,module,exports){
 var projs = [
   require('./projections/merc'),
   require('./projections/longlat')
@@ -11298,7 +11382,7 @@ exports.start = function() {
   projs.forEach(add);
 };
 
-},{"./projections/longlat":55,"./projections/merc":56}],44:[function(require,module,exports){
+},{"./projections/longlat":59,"./projections/merc":60}],48:[function(require,module,exports){
 var EPSLN = 1.0e-10;
 var msfnz = require('../common/msfnz');
 var qsfnz = require('../common/qsfnz');
@@ -11421,7 +11505,7 @@ exports.phi1z = function(eccent, qs) {
 };
 exports.names = ["Albers_Conic_Equal_Area", "Albers", "aea"];
 
-},{"../common/adjust_lon":9,"../common/asinz":10,"../common/msfnz":19,"../common/qsfnz":24}],45:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/asinz":14,"../common/msfnz":23,"../common/qsfnz":28}],49:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 var HALF_PI = Math.PI/2;
 var EPSLN = 1.0e-10;
@@ -11620,7 +11704,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["Azimuthal_Equidistant", "aeqd"];
 
-},{"../common/adjust_lon":9,"../common/asinz":10,"../common/e0fn":11,"../common/e1fn":12,"../common/e2fn":13,"../common/e3fn":14,"../common/gN":15,"../common/imlfn":16,"../common/mlfn":18}],46:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/asinz":14,"../common/e0fn":15,"../common/e1fn":16,"../common/e2fn":17,"../common/e3fn":18,"../common/gN":19,"../common/imlfn":20,"../common/mlfn":22}],50:[function(require,module,exports){
 var mlfn = require('../common/mlfn');
 var e0fn = require('../common/e0fn');
 var e1fn = require('../common/e1fn');
@@ -11724,7 +11808,7 @@ exports.inverse = function(p) {
 
 };
 exports.names = ["Cassini", "Cassini_Soldner", "cass"];
-},{"../common/adjust_lat":8,"../common/adjust_lon":9,"../common/e0fn":11,"../common/e1fn":12,"../common/e2fn":13,"../common/e3fn":14,"../common/gN":15,"../common/imlfn":16,"../common/mlfn":18}],47:[function(require,module,exports){
+},{"../common/adjust_lat":12,"../common/adjust_lon":13,"../common/e0fn":15,"../common/e1fn":16,"../common/e2fn":17,"../common/e3fn":18,"../common/gN":19,"../common/imlfn":20,"../common/mlfn":22}],51:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 var qsfnz = require('../common/qsfnz');
 var msfnz = require('../common/msfnz');
@@ -11789,7 +11873,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["cea"];
 
-},{"../common/adjust_lon":9,"../common/iqsfnz":17,"../common/msfnz":19,"../common/qsfnz":24}],48:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/iqsfnz":21,"../common/msfnz":23,"../common/qsfnz":28}],52:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 var adjust_lat = require('../common/adjust_lat');
 exports.init = function() {
@@ -11832,7 +11916,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["Equirectangular", "Equidistant_Cylindrical", "eqc"];
 
-},{"../common/adjust_lat":8,"../common/adjust_lon":9}],49:[function(require,module,exports){
+},{"../common/adjust_lat":12,"../common/adjust_lon":13}],53:[function(require,module,exports){
 var e0fn = require('../common/e0fn');
 var e1fn = require('../common/e1fn');
 var e2fn = require('../common/e2fn');
@@ -11944,7 +12028,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["Equidistant_Conic", "eqdc"];
 
-},{"../common/adjust_lat":8,"../common/adjust_lon":9,"../common/e0fn":11,"../common/e1fn":12,"../common/e2fn":13,"../common/e3fn":14,"../common/imlfn":16,"../common/mlfn":18,"../common/msfnz":19}],50:[function(require,module,exports){
+},{"../common/adjust_lat":12,"../common/adjust_lon":13,"../common/e0fn":15,"../common/e1fn":16,"../common/e2fn":17,"../common/e3fn":18,"../common/imlfn":20,"../common/mlfn":22,"../common/msfnz":23}],54:[function(require,module,exports){
 var FORTPI = Math.PI/4;
 var srat = require('../common/srat');
 var HALF_PI = Math.PI/2;
@@ -11991,7 +12075,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["gauss"];
 
-},{"../common/srat":26}],51:[function(require,module,exports){
+},{"../common/srat":30}],55:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 var EPSLN = 1.0e-10;
 var asinz = require('../common/asinz');
@@ -12092,7 +12176,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["gnom"];
 
-},{"../common/adjust_lon":9,"../common/asinz":10}],52:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/asinz":14}],56:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 exports.init = function() {
   this.a = 6377397.155;
@@ -12192,7 +12276,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["Krovak", "krovak"];
 
-},{"../common/adjust_lon":9}],53:[function(require,module,exports){
+},{"../common/adjust_lon":13}],57:[function(require,module,exports){
 var HALF_PI = Math.PI/2;
 var FORTPI = Math.PI/4;
 var EPSLN = 1.0e-10;
@@ -12482,7 +12566,7 @@ exports.authlat = function(beta, APA) {
 };
 exports.names = ["Lambert Azimuthal Equal Area", "Lambert_Azimuthal_Equal_Area", "laea"];
 
-},{"../common/adjust_lon":9,"../common/qsfnz":24}],54:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/qsfnz":28}],58:[function(require,module,exports){
 var EPSLN = 1.0e-10;
 var msfnz = require('../common/msfnz');
 var tsfnz = require('../common/tsfnz');
@@ -12619,7 +12703,7 @@ exports.inverse = function(p) {
 
 exports.names = ["Lambert Tangential Conformal Conic Projection", "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_2SP", "lcc"];
 
-},{"../common/adjust_lon":9,"../common/msfnz":19,"../common/phi2z":20,"../common/sign":25,"../common/tsfnz":28}],55:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/msfnz":23,"../common/phi2z":24,"../common/sign":29,"../common/tsfnz":32}],59:[function(require,module,exports){
 exports.init = function() {
   //no-op for longlat
 };
@@ -12631,7 +12715,7 @@ exports.forward = identity;
 exports.inverse = identity;
 exports.names = ["longlat", "identity"];
 
-},{}],56:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 var msfnz = require('../common/msfnz');
 var HALF_PI = Math.PI/2;
 var EPSLN = 1.0e-10;
@@ -12730,7 +12814,7 @@ exports.inverse = function(p) {
 
 exports.names = ["Mercator", "Popular Visualisation Pseudo Mercator", "Mercator_1SP", "Mercator_Auxiliary_Sphere", "merc"];
 
-},{"../common/adjust_lon":9,"../common/msfnz":19,"../common/phi2z":20,"../common/tsfnz":28}],57:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/msfnz":23,"../common/phi2z":24,"../common/tsfnz":32}],61:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 /*
   reference
@@ -12777,7 +12861,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["Miller_Cylindrical", "mill"];
 
-},{"../common/adjust_lon":9}],58:[function(require,module,exports){
+},{"../common/adjust_lon":13}],62:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 var EPSLN = 1.0e-10;
 exports.init = function() {};
@@ -12856,7 +12940,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["Mollweide", "moll"];
 
-},{"../common/adjust_lon":9}],59:[function(require,module,exports){
+},{"../common/adjust_lon":13}],63:[function(require,module,exports){
 var SEC_TO_RAD = 4.84813681109535993589914102357e-6;
 /*
   reference
@@ -13076,7 +13160,7 @@ exports.inverse = function(p) {
   return p;
 };
 exports.names = ["New_Zealand_Map_Grid", "nzmg"];
-},{}],60:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 var tsfnz = require('../common/tsfnz');
 var adjust_lon = require('../common/adjust_lon');
 var phi2z = require('../common/phi2z');
@@ -13245,7 +13329,7 @@ exports.inverse = function(p) {
 };
 
 exports.names = ["Hotine_Oblique_Mercator", "Hotine Oblique Mercator", "Hotine_Oblique_Mercator_Azimuth_Natural_Origin", "Hotine_Oblique_Mercator_Azimuth_Center", "omerc"];
-},{"../common/adjust_lon":9,"../common/phi2z":20,"../common/tsfnz":28}],61:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/phi2z":24,"../common/tsfnz":32}],65:[function(require,module,exports){
 var e0fn = require('../common/e0fn');
 var e1fn = require('../common/e1fn');
 var e2fn = require('../common/e2fn');
@@ -13374,7 +13458,7 @@ exports.inverse = function(p) {
   return p;
 };
 exports.names = ["Polyconic", "poly"];
-},{"../common/adjust_lat":8,"../common/adjust_lon":9,"../common/e0fn":11,"../common/e1fn":12,"../common/e2fn":13,"../common/e3fn":14,"../common/gN":15,"../common/mlfn":18}],62:[function(require,module,exports){
+},{"../common/adjust_lat":12,"../common/adjust_lon":13,"../common/e0fn":15,"../common/e1fn":16,"../common/e2fn":17,"../common/e3fn":18,"../common/gN":19,"../common/mlfn":22}],66:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 var adjust_lat = require('../common/adjust_lat');
 var pj_enfn = require('../common/pj_enfn');
@@ -13481,7 +13565,7 @@ exports.inverse = function(p) {
   return p;
 };
 exports.names = ["Sinusoidal", "sinu"];
-},{"../common/adjust_lat":8,"../common/adjust_lon":9,"../common/asinz":10,"../common/pj_enfn":21,"../common/pj_inv_mlfn":22,"../common/pj_mlfn":23}],63:[function(require,module,exports){
+},{"../common/adjust_lat":12,"../common/adjust_lon":13,"../common/asinz":14,"../common/pj_enfn":25,"../common/pj_inv_mlfn":26,"../common/pj_mlfn":27}],67:[function(require,module,exports){
 /*
   references:
     Formules et constantes pour le Calcul pour la
@@ -13563,7 +13647,7 @@ exports.inverse = function(p) {
 
 exports.names = ["somerc"];
 
-},{}],64:[function(require,module,exports){
+},{}],68:[function(require,module,exports){
 var HALF_PI = Math.PI/2;
 var EPSLN = 1.0e-10;
 var sign = require('../common/sign');
@@ -13730,7 +13814,7 @@ exports.inverse = function(p) {
 
 };
 exports.names = ["stere"];
-},{"../common/adjust_lon":9,"../common/msfnz":19,"../common/phi2z":20,"../common/sign":25,"../common/tsfnz":28}],65:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/msfnz":23,"../common/phi2z":24,"../common/sign":29,"../common/tsfnz":32}],69:[function(require,module,exports){
 var gauss = require('./gauss');
 var adjust_lon = require('../common/adjust_lon');
 exports.init = function() {
@@ -13789,7 +13873,7 @@ exports.inverse = function(p) {
 
 exports.names = ["Stereographic_North_Pole", "Oblique_Stereographic", "Polar_Stereographic", "sterea","Oblique Stereographic Alternative"];
 
-},{"../common/adjust_lon":9,"./gauss":50}],66:[function(require,module,exports){
+},{"../common/adjust_lon":13,"./gauss":54}],70:[function(require,module,exports){
 var e0fn = require('../common/e0fn');
 var e1fn = require('../common/e1fn');
 var e2fn = require('../common/e2fn');
@@ -13926,7 +14010,7 @@ exports.inverse = function(p) {
 };
 exports.names = ["Transverse_Mercator", "Transverse Mercator", "tmerc"];
 
-},{"../common/adjust_lon":9,"../common/asinz":10,"../common/e0fn":11,"../common/e1fn":12,"../common/e2fn":13,"../common/e3fn":14,"../common/mlfn":18,"../common/sign":25}],67:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/asinz":14,"../common/e0fn":15,"../common/e1fn":16,"../common/e2fn":17,"../common/e3fn":18,"../common/mlfn":22,"../common/sign":29}],71:[function(require,module,exports){
 var D2R = 0.01745329251994329577;
 var tmerc = require('./tmerc');
 exports.dependsOn = 'tmerc';
@@ -13946,7 +14030,7 @@ exports.init = function() {
 };
 exports.names = ["Universal Transverse Mercator System", "utm"];
 
-},{"./tmerc":66}],68:[function(require,module,exports){
+},{"./tmerc":70}],72:[function(require,module,exports){
 var adjust_lon = require('../common/adjust_lon');
 var HALF_PI = Math.PI/2;
 var EPSLN = 1.0e-10;
@@ -14067,7 +14151,7 @@ exports.inverse = function(p) {
   return p;
 };
 exports.names = ["Van_der_Grinten_I", "VanDerGrinten", "vandg"];
-},{"../common/adjust_lon":9,"../common/asinz":10}],69:[function(require,module,exports){
+},{"../common/adjust_lon":13,"../common/asinz":14}],73:[function(require,module,exports){
 var D2R = 0.01745329251994329577;
 var R2D = 57.29577951308232088;
 var PJD_3PARAM = 1;
@@ -14140,7 +14224,7 @@ module.exports = function transform(source, dest, point) {
 
   return point;
 };
-},{"./Proj":6,"./adjust_axis":7,"./common/toPoint":27,"./datum_transform":34}],70:[function(require,module,exports){
+},{"./Proj":10,"./adjust_axis":11,"./common/toPoint":31,"./datum_transform":38}],74:[function(require,module,exports){
 var D2R = 0.01745329251994329577;
 var extend = require('./extend');
 
@@ -14355,7 +14439,7 @@ module.exports = function(wkt, self) {
   return extend(self, obj.output);
 };
 
-},{"./extend":37}],71:[function(require,module,exports){
+},{"./extend":41}],75:[function(require,module,exports){
 
 
 
@@ -15092,7 +15176,7 @@ function getMinNorthing(zoneLetter) {
 
 }
 
-},{}],72:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 module.exports={
   "name": "proj4",
   "version": "2.3.3",
@@ -15194,4 +15278,4 @@ module.exports={
   "_resolved": "https://registry.npmjs.org/proj4/-/proj4-2.3.3.tgz"
 }
 
-},{}]},{},[1]);
+},{}]},{},[4]);
