@@ -1,4 +1,7 @@
 /* Layers */
+var Proj4js = require('proj4');
+var L = require('leaflet');
+require('leaflet-draw');
 // Transverse Mercator UTM North 32647
 var myanmar_layer = L.tileLayer('../myanmar/{z}/{x}/{y}.png', {
         minZoom: 12,
@@ -51,7 +54,7 @@ var baseMaps = {
 };
 
 // Add in our projection
-Proj4js.defs["EPSG:32647"] = "+proj=utm +zone=47 +ellps=WGS84 +datum=WGS84 +units=m +no_defs";
+Proj4js.defs([["EPSG:32647", "+proj=utm +zone=47 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"]]);
 
 /* Layer choices */
 var locale = 'myanmar';
@@ -113,4 +116,8 @@ var localeOptions = {
         zom: 12
     },
 };
+
+exports.locale = locale;
+exports.localeOptions = localeOptions;
+exports.baseMaps = baseMaps;
 

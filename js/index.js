@@ -1,4 +1,12 @@
 /* INIT */
+var Proj4js = require('proj4');
+var L = require('leaflet');
+require('leaflet-draw');
+var tilesets = require('./tilesets.js');
+var locale = tilesets.locale;
+var localeOptions = tilesets.localeOptions;
+var baseMaps = tilesets.baseMaps;
+
 // ma map
 var map = L.map('map', { 
     center: [20.9, 96.15],
@@ -23,6 +31,18 @@ drawGroup.addTo(map);
 // Base Map
 L.control.layers(baseMaps).addTo(map);
 
+var icon_alt = new L.icon({
+    iconUrl: "css/images/icon-orange.png",
+    iconSize: [25, 41],
+    iconAnchor: [11.5, 39]
+});
+
+var icon_def = new L.icon({
+    iconUrl: "css/images/icon-default.png",
+    iconSize: [25, 41],
+    iconAnchor: [11.5, 39]
+});
+
 // Initialise the draw control and pass it the FeatureGroup of editable layers
 var allowedShapes = {
     polyline: false,
@@ -33,13 +53,11 @@ var allowedShapes = {
     circle: false,
     marker: {
         repeatMode: true,
-        editing: true
+        editing: true,
+        icon: icon_def
     }
 };
 
-var icon_alt = new L.icon({
-    iconUrl: "css/images/icon-orange.png"
-});
 var drawControl = new L.Control.Draw({
     draw: allowedShapes, 
     edit: {
@@ -315,6 +333,8 @@ var postFile = function() {
     req.open("POST", "/upload.shp", true);
     req.send(fd);
 }
+
+global.window.postFile = postFile;
 /******************************************************************************/
 
 /* Utils */

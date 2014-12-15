@@ -1,0 +1,33 @@
+{
+  "name": "tilesplice",
+  "version": "1.0.0",
+  "description": "Web clipping and marking tool for geotif maps",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SEL-Columbia/tilesplice.git"
+  },
+  "keywords": [
+    "geotiff",
+    "shapefile",
+    "python",
+    "clipping",
+    "marking",
+    "geojson",
+    "leaflet"
+  ],
+  "author": "Abdi Dahir",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SEL-Columbia/tilesplice/issues"
+  },
+  "homepage": "https://github.com/SEL-Columbia/tilesplice",
+  "dependencies": {
+    "leaflet": "^0.7.3",
+    "leaflet-draw": "^0.2.3",
+    "proj4": "^2.3.3"
+  }
+}

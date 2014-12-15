@@ -1,4 +1,6 @@
 myanmar/
+node_modules/
+output/
 tilesplice/
 myanmar_*/
 *.tif
