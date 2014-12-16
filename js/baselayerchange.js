@@ -1,5 +1,3 @@
-var locale = require('./tilesets.js').locale;
-var localeOptions = require('./tilesets.js').localeOptions;
 var editor = require('./editor.js');
 
 var map = editor.map,
@@ -9,16 +7,16 @@ module.exports = function(e) {
     var new_locale = e.name;
 
     // swap feature group layers
-    localeOptions[locale].draw = drawGroup.getLayers();
+    editor.localeOptions[editor.locale].draw = drawGroup.getLayers();
     drawGroup.clearLayers();
-    localeOptions[new_locale].draw.forEach(function(layer) {
+    editor.localeOptions[new_locale].draw.forEach(function(layer) {
         drawGroup.addLayer(layer);
     });
 
     // set new locale, zoom in to defined center
-    locale = new_locale; 
+    editor.locale = new_locale; 
     var layer = e.layer;
-    var cen = localeOptions[locale].cen;
-    var zom = localeOptions[locale].zom;
+    var cen = editor.localeOptions[editor.locale].cen;
+    var zom = editor.localeOptions[editor.locale].zom;
     map.setView(cen, zom);
 };

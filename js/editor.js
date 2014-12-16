@@ -3,9 +3,6 @@ var L = require('leaflet');
 require('leaflet-draw');
 
 var tilesets = require('./tilesets.js');
-var locale = tilesets.locale;
-var localeOptions = tilesets.localeOptions;
-var baseMaps = tilesets.baseMaps;
 
 module.exports = (function() {
     var icon_alt = new L.icon({
@@ -19,6 +16,10 @@ module.exports = (function() {
         iconSize: [25, 41],
         iconAnchor: [11.5, 39]
     });
+
+    var locale = tilesets.locale;
+    var localeOptions = tilesets.localeOptions;
+    var baseMaps = tilesets.baseMaps;
 
     function init_map(url) {
 
@@ -104,6 +105,8 @@ module.exports = (function() {
         icon_def: icon_def,
         drawGroup: init_draw_controllers(_map),
         dom: init_dom(_map),
+        locale: locale,
+        localeOptions: localeOptions,
         map: _map
     };
 })();

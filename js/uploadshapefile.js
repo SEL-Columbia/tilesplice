@@ -1,8 +1,5 @@
 var L = require('leaflet');
 
-var locale = require('./tilesets.js').locale;
-var localeOptions = require('./tilesets.js').localeOptions;
-
 var Proj4js = require('proj4');
 
 var editor = require('./editor.js');
@@ -14,6 +11,8 @@ var map = editor.map,
 
 var logger = dom.log,
     input = dom.input;
+
+var Request = require('./request.js');
 
 module.exports = function() {
 
@@ -45,7 +44,7 @@ module.exports = function() {
                 // project point 
                 if (projection) {
                     console.log(projection);
-                    Proj4js.defs['TEMP'] = projection;
+                    Proj4js.defs([['TEMP', projection]]);
                     var src = new Proj4js.Proj('TEMP');
                     var point = new Proj4js.Point(coords);
                     console.log(point, coords);
@@ -104,31 +103,27 @@ module.exports = function() {
 
 
     // ajax req to update layer
-    var req = new XMLHttpRequest();
-    req.onreadystatechange = function() {
-        if (req.readyState == 4) {
-            var geojson = JSON.parse(req.responseText);
+    var req = new Request();
+    req
+        .create_request("POST", "/upload.shp", true)
+        .set_response_handler(function() {
+            var geojson = JSON.parse(req.response_text());
             var length =  geojson.features.length;
             if (length < 1) {
                 return;
             }
             var map_name = geojson.features[0].properties.map || "global";
-            if (localeOptions[map_name]) {
-                var props = {name: map_name, layer: localeOptions[map_name].layer}
+            if (editor.localeOptions[map_name]) {
+                var props = {name: map_name, layer: editor.localeOptions[map_name].layer}
                 //var event = new L.LayersControlEvent("baselayerchange", props);
                 //document.dispatchEvent(event);
             }
 
-            var err = loadPoints(geojson);
-            if (err) 
-                return;
-
+            loadPoints(geojson);
+            
             logger.innerHTML += "<p id='loaded'> Loaded: "
                 + length + " for layer " + map_name
                 + "</p>";
-        }
-    }
-    
-    req.open("POST", "/upload.shp", true);
-    req.send(fd);
+        })
+        .send(fd);
 };

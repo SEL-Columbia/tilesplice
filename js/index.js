@@ -43,4 +43,4 @@ editor.map.on('baselayerchange', function(e) {
 
 /******************************************************************************/
 
-window.map = editor.map;
+window.editor = editor;
