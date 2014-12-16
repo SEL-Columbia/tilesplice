@@ -3,9 +3,6 @@ require('leaflet-draw');
 
 var Proj4js = require('proj4');
 
-var locale = require('./tilesets.js').locale;
-var localeOptions = require('./tilesets.js').localeOptions;
-
 var editor = require('./editor.js');
 
 var basechange = require('./baselayerchange.js');

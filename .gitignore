@@ -5,5 +5,9 @@ tilesplice/
 myanmar_*/
 *.tif
 *.pyc
+*.shp
+*.dbf
+*.shx
+*.prj
 clippers/*.pyc
 test.*

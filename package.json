@@ -1,7 +1,7 @@
 {
   "name": "tilesplice",
   "version": "1.0.0",
-  "description": "Web clipping and marking tool for geotif maps",
+  "description": "Web clipping and marking tool for geotiff maps",
   "main": "index.js",
   "scripts": {
     "test": "mocha"

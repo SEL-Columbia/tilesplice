@@ -273,9 +273,6 @@ require('leaflet-draw');
 
 var Proj4js = require('proj4');
 
-var locale = require('./tilesets.js').locale;
-var localeOptions = require('./tilesets.js').localeOptions;
-
 var editor = require('./editor.js');
 
 var basechange = require('./baselayerchange.js');
@@ -316,7 +313,7 @@ editor.map.on('baselayerchange', function(e) {
 window.editor = editor;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./baselayerchange.js":1,"./drawcreated.js":2,"./editor.js":3,"./tilesets.js":6,"./uploadshapefile.js":7,"leaflet":9,"leaflet-draw":8,"proj4":45}],5:[function(require,module,exports){
+},{"./baselayerchange.js":1,"./drawcreated.js":2,"./editor.js":3,"./uploadshapefile.js":7,"leaflet":9,"leaflet-draw":8,"proj4":45}],5:[function(require,module,exports){
 /* Wrapper on XMLHttpRequest */
 module.exports = function() {
     var req = null;

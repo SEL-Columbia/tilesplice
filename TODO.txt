@@ -10,7 +10,9 @@ or to the current active tileset.
 
 5. Allow client to edit background layer (hardcoded currently)
 
-?. Make code look less like shit
+6. Allow for metadata to be added on markers
+
+?. Make code look less like shit (in progress)
 
 #Extended
 1. Draw arbitrary polygons as bounding boxes, users cannot draw points outside
