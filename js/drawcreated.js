@@ -4,10 +4,15 @@ var Proj4js = require('proj4');
 var locale = require('./tilesets.js').locale;
 var localeOptions = require('./tilesets.js').localeOptions;
 
-module.exports = function(e, map, geojsondiv, drawGroup) {
-    var map = map;
-    var geojsondiv = geojsondiv;
-    var drawGroup = drawGroup;
+var editor = require('./editor.js');
+
+var map = editor.map,
+    drawGroup = editor.drawGroup,
+    dom = editor.dom;
+
+var logger = dom.log;
+
+module.exports = function(e) {
     var source = localeOptions[locale].src;
     var tile_layer = localeOptions[locale].layer;
     var dest = localeOptions[locale].dest;
@@ -16,20 +21,19 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
     var type = e.layerType;
     var layer = e.layer;
 
-    var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
+    var dump_marks = function(top_x, top_y, bot_x, bot_y) {
     
         // Set up ajax request, update console with shp file location on success;
         var req = null;
         req = new XMLHttpRequest();
         req.onreadystatechange = function() {
             if (req.readyState == 4) {
-    
                 var url1 = "http://" + window.location.host + "/" + req.responseText + "dbf";
                 var url2 = "http://" + window.location.host + "/" + req.responseText + "sbx";
                 var url3 = "http://" + window.location.host + "/" + req.responseText + "shp";
-                geojsondiv.innerHTML += "<p id='shps'>" + url1 + "</p>";
-                geojsondiv.innerHTML += "<p id='shps'>" + url2 + "</p>";
-                geojsondiv.innerHTML += "<p id='shps'>" + url3 + "</p>";
+                logger.innerHTML += "<a href="+url1+" id='shps'>" +url1+ "</a>";
+                logger.innerHTML += "<a href="+url2+" id='shps'>" +url2+ "</a>";
+                logger.innerHTML += "<a href="+url3+" id='shps'>" +url3+ "</a>";
             }
         }
     
@@ -75,7 +79,7 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
 
         // labels
         window.setTimeout(
-            dumpMarks(ptop.lng, ptop.lat, pbot.lng, pbot.lat),
+            dump_marks(ptop.lng, ptop.lat, pbot.lng, pbot.lat),
         100);
            
         if (isWeb) {
@@ -115,7 +119,7 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
                                 + req.responseText
                                 + '</a>');
                 var url = "http://" + window.location.host + "/" + req.responseText;
-                geojsondiv.innerHTML += "<p id='clip'>" + url + "</p>";
+                logger.innerHTML += "<a href="+url+" id='clip'>" + url + "</a>";
             }
 
         }
@@ -123,7 +127,7 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
         req.open("GET", "/clip.tif" + get, true);
         req.send();
 
-        map.addLayer(layer);
+        map.addLayer(layer); //XXX: dont add this layer to the map directly
     } else if (type === 'marker') {
         // just setting points
         drawGroup.addLayer(layer);

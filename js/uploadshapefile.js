@@ -5,12 +5,17 @@ var localeOptions = require('./tilesets.js').localeOptions;
 
 var Proj4js = require('proj4');
 
-module.exports = function(map, geojsondiv, drawGroup, input, icon_alt) {
-    var map = map,
-        geojsondiv = geojsondiv,
-        drawGroup = drawGroup,
-        input   =   input,
-        icon_alt = icon_alt;
+var editor = require('./editor.js');
+
+var map = editor.map,
+    drawGroup = editor.drawGroup,
+    dom = editor.dom,
+    icon_alt = editor.icon_alt;
+
+var logger = dom.log,
+    input = dom.input;
+
+module.exports = function() {
 
     function loadPoints(geojson) {
     
@@ -118,7 +123,7 @@ module.exports = function(map, geojsondiv, drawGroup, input, icon_alt) {
             if (err) 
                 return;
 
-            geojsondiv.innerHTML += "<p id='loaded'> Loaded: "
+            logger.innerHTML += "<p id='loaded'> Loaded: "
                 + length + " for layer " + map_name
                 + "</p>";
         }
@@ -126,5 +131,4 @@ module.exports = function(map, geojsondiv, drawGroup, input, icon_alt) {
     
     req.open("POST", "/upload.shp", true);
     req.send(fd);
-
 };

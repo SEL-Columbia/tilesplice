@@ -1,7 +1,11 @@
 var locale = require('./tilesets.js').locale;
 var localeOptions = require('./tilesets.js').localeOptions;
+var editor = require('./editor.js');
 
-module.exports = function(e, map, drawGroup) {
+var map = editor.map,
+    drawGroup = editor.drawGroup;
+
+module.exports = function(e) {
     var new_locale = e.name;
 
     // swap feature group layers

@@ -29,7 +29,8 @@
     background: green;
     margin-bottom: 20px;
 }
-#geojson {
+
+#logger {
     margin: 0px auto;
     width: 100%;
     font-size: 12px;
@@ -38,12 +39,18 @@
 
 #shps {
     color: blue;
+    display: block;
+    padding: 2px 0px;
 }
 
 #loaded {
     color: green;
+    display: block;
+    padding: 2px 0px;
 }
 
 #clip {
     color: red;
+    display: block;
+    padding: 2px 0px;
 }

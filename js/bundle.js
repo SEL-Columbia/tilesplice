@@ -1,8 +1,12 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var locale = require('./tilesets.js').locale;
 var localeOptions = require('./tilesets.js').localeOptions;
+var editor = require('./editor.js');
 
-module.exports = function(e, map, drawGroup) {
+var map = editor.map,
+    drawGroup = editor.drawGroup;
+
+module.exports = function(e) {
     var new_locale = e.name;
 
     // swap feature group layers
@@ -20,17 +24,22 @@ module.exports = function(e, map, drawGroup) {
     map.setView(cen, zom);
 };
 
-},{"./tilesets.js":5}],2:[function(require,module,exports){
+},{"./editor.js":3,"./tilesets.js":5}],2:[function(require,module,exports){
 var L = require('leaflet');
 var Proj4js = require('proj4');
 
 var locale = require('./tilesets.js').locale;
 var localeOptions = require('./tilesets.js').localeOptions;
 
-module.exports = function(e, map, geojsondiv, drawGroup) {
-    var map = map;
-    var geojsondiv = geojsondiv;
-    var drawGroup = drawGroup;
+var editor = require('./editor.js');
+
+var map = editor.map,
+    drawGroup = editor.drawGroup,
+    dom = editor.dom;
+
+var logger = dom.log;
+
+module.exports = function(e) {
     var source = localeOptions[locale].src;
     var tile_layer = localeOptions[locale].layer;
     var dest = localeOptions[locale].dest;
@@ -39,20 +48,19 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
     var type = e.layerType;
     var layer = e.layer;
 
-    var dumpMarks = function(top_x, top_y, bot_x, bot_y) {
+    var dump_marks = function(top_x, top_y, bot_x, bot_y) {
     
         // Set up ajax request, update console with shp file location on success;
         var req = null;
         req = new XMLHttpRequest();
         req.onreadystatechange = function() {
             if (req.readyState == 4) {
-    
                 var url1 = "http://" + window.location.host + "/" + req.responseText + "dbf";
                 var url2 = "http://" + window.location.host + "/" + req.responseText + "sbx";
                 var url3 = "http://" + window.location.host + "/" + req.responseText + "shp";
-                geojsondiv.innerHTML += "<p id='shps'>" + url1 + "</p>";
-                geojsondiv.innerHTML += "<p id='shps'>" + url2 + "</p>";
-                geojsondiv.innerHTML += "<p id='shps'>" + url3 + "</p>";
+                logger.innerHTML += "<a href="+url1+" id='shps'>" +url1+ "</a>";
+                logger.innerHTML += "<a href="+url2+" id='shps'>" +url2+ "</a>";
+                logger.innerHTML += "<a href="+url3+" id='shps'>" +url3+ "</a>";
             }
         }
     
@@ -98,7 +106,7 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
 
         // labels
         window.setTimeout(
-            dumpMarks(ptop.lng, ptop.lat, pbot.lng, pbot.lat),
+            dump_marks(ptop.lng, ptop.lat, pbot.lng, pbot.lat),
         100);
            
         if (isWeb) {
@@ -138,7 +146,7 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
                                 + req.responseText
                                 + '</a>');
                 var url = "http://" + window.location.host + "/" + req.responseText;
-                geojsondiv.innerHTML += "<p id='clip'>" + url + "</p>";
+                logger.innerHTML += "<a href="+url+" id='clip'>" + url + "</a>";
             }
 
         }
@@ -146,7 +154,7 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
         req.open("GET", "/clip.tif" + get, true);
         req.send();
 
-        map.addLayer(layer);
+        map.addLayer(layer); //XXX: dont add this layer to the map directly
     } else if (type === 'marker') {
         // just setting points
         drawGroup.addLayer(layer);
@@ -154,7 +162,7 @@ module.exports = function(e, map, geojsondiv, drawGroup) {
 
 };
 
-},{"./tilesets.js":5,"leaflet":8,"proj4":44}],3:[function(require,module,exports){
+},{"./editor.js":3,"./tilesets.js":5,"leaflet":8,"proj4":44}],3:[function(require,module,exports){
 var Proj4js = require('proj4');
 var L = require('leaflet');
 require('leaflet-draw');
@@ -237,7 +245,7 @@ module.exports = (function() {
 
     function init_dom(map) {
         // Basically a log for events that happened
-        var geojsondiv = document.getElementById('geojson');
+        var logger = document.getElementById('logger');
         
         // Set up upload button
         var inputdiv = document.getElementById('upload');
@@ -249,7 +257,7 @@ module.exports = (function() {
         inputdiv.appendChild(input);
 
         return {
-            log: geojsondiv,
+            log: logger,
             input: input
         };
     };
@@ -277,14 +285,6 @@ var localeOptions = require('./tilesets.js').localeOptions;
 
 var editor = require('./editor.js');
 
-var map = editor.map,
-    drawGroup = editor.drawGroup,
-    dom = editor.dom,
-    icon_alt = editor.icon_alt;
-
-var geojsondiv = dom.log,
-    input = dom.input;
-
 var basechange = require('./baselayerchange.js');
 var drawcreated = require('./drawcreated.js');
 var loadshapefile = require('./uploadshapefile.js');
@@ -293,33 +293,34 @@ var loadshapefile = require('./uploadshapefile.js');
 
 /* DOWNLOAD */
 // The only event that matters, drawing a box, or setting points
-map.on('draw:created', function(e) {
-    drawcreated(e, map, geojsondiv, drawGroup);
+editor.map.on('draw:created', function(e) {
+    drawcreated(e);
 });
 
 /******************************************************************************/
 
 /* UPLOAD */
 // The only other event that matters, user loads shp file, i populate map
-input.setAttribute("onchange", "onUpload()");
+editor.dom.input.setAttribute("onchange", "onUpload()");
 function onUpload() {
-    loadshapefile(map, geojsondiv, drawGroup, input, icon_alt);
+    loadshapefile();
 }
 
+// Input needs function to be available globally
 global.window.onUpload = onUpload;
 
 /******************************************************************************/
 
 /* SWITCH LAYER */
-// radio button events
-map.on('baselayerchange', function(e) {
+// Radio button events
+editor.map.on('baselayerchange', function(e) {
     window.base_event = e;
-    basechange(e, map, drawGroup);
+    basechange(e);
 });
 
 /******************************************************************************/
 
-window.map = map;
+window.map = editor.map;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./baselayerchange.js":1,"./drawcreated.js":2,"./editor.js":3,"./tilesets.js":5,"./uploadshapefile.js":6,"leaflet":8,"leaflet-draw":7,"proj4":44}],5:[function(require,module,exports){
@@ -455,12 +456,17 @@ var localeOptions = require('./tilesets.js').localeOptions;
 
 var Proj4js = require('proj4');
 
-module.exports = function(map, geojsondiv, drawGroup, input, icon_alt) {
-    var map = map,
-        geojsondiv = geojsondiv,
-        drawGroup = drawGroup,
-        input   =   input,
-        icon_alt = icon_alt;
+var editor = require('./editor.js');
+
+var map = editor.map,
+    drawGroup = editor.drawGroup,
+    dom = editor.dom,
+    icon_alt = editor.icon_alt;
+
+var logger = dom.log,
+    input = dom.input;
+
+module.exports = function() {
 
     function loadPoints(geojson) {
     
@@ -568,7 +574,7 @@ module.exports = function(map, geojsondiv, drawGroup, input, icon_alt) {
             if (err) 
                 return;
 
-            geojsondiv.innerHTML += "<p id='loaded'> Loaded: "
+            logger.innerHTML += "<p id='loaded'> Loaded: "
                 + length + " for layer " + map_name
                 + "</p>";
         }
@@ -576,10 +582,9 @@ module.exports = function(map, geojsondiv, drawGroup, input, icon_alt) {
     
     req.open("POST", "/upload.shp", true);
     req.send(fd);
-
 };
 
-},{"./tilesets.js":5,"leaflet":8,"proj4":44}],7:[function(require,module,exports){
+},{"./editor.js":3,"./tilesets.js":5,"leaflet":8,"proj4":44}],7:[function(require,module,exports){
 /*
 	Leaflet.draw, a plugin that adds drawing and editing tools to Leaflet powered maps.
 	(c) 2012-2013, Jacob Toye, Smartrak

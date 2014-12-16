@@ -80,7 +80,7 @@ module.exports = (function() {
 
     function init_dom(map) {
         // Basically a log for events that happened
-        var geojsondiv = document.getElementById('geojson');
+        var logger = document.getElementById('logger');
         
         // Set up upload button
         var inputdiv = document.getElementById('upload');
@@ -92,7 +92,7 @@ module.exports = (function() {
         inputdiv.appendChild(input);
 
         return {
-            log: geojsondiv,
+            log: logger,
             input: input
         };
     };
