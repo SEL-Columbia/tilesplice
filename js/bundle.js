@@ -82,7 +82,7 @@ module.exports = function(e) {
                 .set_response_handler(function() {
                     var url = "http://" + window.location.host + "/" + req.response_text();
                     logger.innerHTML += "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
-                    logger.innerHTML += "<a href="+url+"sbx id='shps'>"+url+"sbx</a>";
+                    logger.innerHTML += "<a href="+url+"shx id='shps'>"+url+"shx</a>";
                     logger.innerHTML += "<a href="+url+"shp id='shps'>"+url+"shp</a>";
                 })
                 .send(JSON.stringify(pointsGeoJson));
