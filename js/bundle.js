@@ -512,6 +512,22 @@ module.exports = function() {
             return marker;
         };
     
+
+        function drawPoly(points, name, type) {
+            var latlngs = [];
+            points.forEach(function(point) {
+                latlngs.push(new L.latLng(point[1], point[0]));
+                //console.log(point);
+            });
+
+            //console.log(latlngs);
+            window.pts = latlngs;
+            var poly = new L.polygon(latlngs, {
+            });
+
+            return poly;
+        };
+
         window.features = [];
         var dst = new Proj4js.Proj('EPSG:4326');
         L.geoJson(geojson, {
@@ -522,23 +538,42 @@ module.exports = function() {
                 var coords = feature.geometry.coordinates;
                 var projection = feature.properties.projection;
                 var map_name = feature.properties.map;
+                var type = feature.geometry.type;
     
-                // project point 
-                if (projection) {
-                    console.log(projection);
-                    Proj4js.defs([['TEMP', projection]]);
-                    var src = new Proj4js.Proj('TEMP');
-                    var point = new Proj4js.Point(coords);
-                    console.log(point, coords);
-                    Proj4js.transform(src, dst, point);
-                    console.log(point, coords);
-                    // save change
-                    feature.geometry.coordinates = [point.x, point.y];
-                    coords = feature.geometry.coordinates;
+                if (type === "Point") {
+                    // project point 
+                    if (projection) {
+                        //TODO: loop through coord pairs and alter projection
+                        Proj4js.defs([['TEMP', projection]]);
+                        var src = new Proj4js.Proj('TEMP');
+                        var point = new Proj4js.Point(coords);
+                        Proj4js.transform(src, dst, point);
+                        // save change
+                        feature.geometry.coordinates = [point.x, point.y];
+                        coords = feature.geometry.coordinates;
+                    }
+    
+                    map.setView([coords[1], coords[0]], 14);
+                    var layer = drawPoint(coords[1], coords[0], map_name, map_name)
+                } else if (type === "Polygon") {
+
+                    if (projection) {
+                        var new_coords = [];
+                        coords[0].forEach(function(coord) {
+                            Proj4js.defs([['TEMP', projection]]);
+                            var src = new Proj4js.Proj('TEMP');
+                            var point = new Proj4js.Point(coord);
+                            Proj4js.transform(src, dst, point);
+                            new_coords.push([point.x, point.y]);
+                        });
+
+                        coords[0] = new_coords
+                    };
+
+                    map.setView([coords[0][0][1], coords[0][0][0]], 14);
+                    var layer = drawPoly(coords[0], map_name, map_name)
                 }
-    
-                map.setView([coords[1], coords[0]], 14);
-                var layer = drawPoint(coords[1], coords[0], map_name, map_name)
+
                 drawGroup.addLayer(layer);;
             }
         });
