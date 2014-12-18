@@ -54,3 +54,11 @@
     display: block;
     padding: 2px 0px;
 }
+
+.leaflet-draw-toolbar .leaflet-draw-draw-markertooltip {
+    background-position: -272px -2px;
+}
+.leaflet-retina .leaflet-draw-toolbar a {
+    background-image: url('images/spritesheet-2x.png');
+    background-size: 300px 30px !important;
+}

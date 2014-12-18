@@ -18,5 +18,5 @@ module.exports = function(e) {
     var layer = e.layer;
     var cen = editor.localeOptions[editor.locale].cen;
     var zom = editor.localeOptions[editor.locale].zom;
-    map.setView(cen, zom);
+    //map.setView(cen, zom);
 };

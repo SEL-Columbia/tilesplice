@@ -120,4 +120,3 @@ var localeOptions = {
 exports.locale = locale;
 exports.localeOptions = localeOptions;
 exports.baseMaps = baseMaps;
-
