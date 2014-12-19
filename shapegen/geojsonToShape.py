@@ -9,25 +9,14 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
     ''' 
     Generate the shape file from the point data
     ''' 
-    def writePoint(shp_w, features, map_name):
+    def writePoint(shp_w, features, props):
         
-        shp_w.field('map')
-
-        
-        #meta data
-        #first_feature = features[0];
-        #for name in first_feature.keys(): 
-        #    shp_w.field(name)
-
+        [shp_w.field(prop) for prop in props]
         for feature in features:
             coords = feature['geometry']['coordinates']
             shp_w.point(float(coords[0]), float(coords[1]))
-            shp_w.record(map_name)
-            # this assumes ordering for keys will not change btwn calls
-            #for name in feature.keys(): 
-            #    shp_w.record(map_name, 
-    
-
+            values = [str(feature['properties'][prop]) for prop in props] 
+            shp_w.record(*values)
     
     shp_w = None
     features = geojson['features']
@@ -35,6 +24,7 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
         return;
 
     first_feature = features[0]
+    first_feature_props = [str(key) for key in first_feature['properties'].keys()]
     
     # Determine what the geometry is to record a shapefile
     shp_type = first_feature['geometry']['type']
@@ -43,21 +33,19 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
     if shp_type == "Point":
         
         shp_w = shapefile.Writer(shapefile.POINT)
-        writePoint(shp_w, features, map_name)
+        writePoint(shp_w, features, first_feature_props)
 
     elif shp_type == "LineString":
         pass
     elif shp_type == "Polygon":
         pass
-    elif shp_type == "GeometryCollection":
+    elif shp_type == "Polyline":
         pass
     elif shp_type == "MultiPoint":
         pass
     elif shp_type == "MultiLineString":
         pass
     elif shp_type == "MultiPolygon":
-        pass
-    elif shp_type == "Positions":
         pass
     else:
         print "Unknown geometry"
@@ -79,8 +67,6 @@ if __name__ == '__main__':
     geojson = json.loads(geojson)
 
     geojsonToShape(geojson, "newcounts")
-
-    
 
     shx = open("newcounts.shx")
     shp = open("newcounts.shp")

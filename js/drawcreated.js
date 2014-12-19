@@ -20,6 +20,9 @@ module.exports = function(e) {
     var type = e.layerType;
     var layer = e.layer;
 
+    layer.metadata = {};
+    layer.metadata['map'] = editor.locale;
+
     var dump_marks = function(top_x, top_y, bot_x, bot_y) {
     
         var pointsGeoJson = drawGroup.toGeoJSON();
@@ -123,6 +126,23 @@ module.exports = function(e) {
     } else if (type === 'marker') {
         // just setting points
         drawGroup.addLayer(layer);
-    }
+    } else if (type === 'markertooltip') {
+        window.mark = layer;
+        var counter = 0;
+        var metadata = prompt("Metadata:", "");
+        while(metadata) { 
+            console.log(metadata, counter);
+            layer.metadata['meta'+counter++] = metadata;
+            metadata = prompt("Metadata:", "");
+        }
+
+        layer.options.title = JSON.stringify(layer.metadata, null, 2); 
+        drawGroup.addLayer(layer);
+
+    } else if (type === 'polyline') {
+        alert('boo');
+    } else {
+        console.log(type);
+    };
 
 };

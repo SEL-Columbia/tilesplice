@@ -1,10 +1,15 @@
 var Proj4js = require('proj4');
 var L = require('leaflet');
 require('leaflet-draw');
+require('./leaflet-mods.js');
 
 var tilesets = require('./tilesets.js');
 
 module.exports = (function() {
+    var locale = tilesets.locale;
+    var localeOptions = tilesets.localeOptions;
+    var baseMaps = tilesets.baseMaps;
+
     var icon_alt = new L.icon({
         iconUrl: "css/images/icon-orange.png",
         iconSize: [25, 41],
@@ -16,64 +21,6 @@ module.exports = (function() {
         iconSize: [25, 41],
         iconAnchor: [11.5, 39]
     });
-
-
-    L.Draw.MarkerToolTip = L.Draw.Marker.extend({
-        initialize: function (map, options) {
-            this.type = 'MarkerToolTip';
-
-            L.Draw.Feature.prototype.initialize.call(this, map, options);
-        },
-
-        addHooks: function () {
-            L.Draw.Marker.prototype.addHooks.call(this);
-
-            if (this._map) {
-                this._tooltip.updateContent({ text: 'Click map to place marker with properties input.' });
-            }
-        }
-    });
-
-    L.DrawToolbar.include({
-        getModeHandlers: function (map) {
-            return [
-                {
-                    enabled: this.options.marker,
-                    handler: new L.Draw.Marker(map, this.options.marker),
-                    title: L.drawLocal.draw.toolbar.buttons.marker
-                },
-                {
-                    enabled: this.options.polyline,
-                    handler: new L.Draw.Polyline(map, this.options.polyline),
-                    title: L.drawLocal.draw.toolbar.buttons.polyline
-                },
-                {
-                    enabled: this.options.polygon,
-                    handler: new L.Draw.Polygon(map, this.options.polygon),
-                    title: L.drawLocal.draw.toolbar.buttons.polygon
-                },
-                {
-                    enabled: this.options.rectangle,
-                    handler: new L.Draw.Rectangle(map, this.options.rectangle),
-                    title: L.drawLocal.draw.toolbar.buttons.rectangle
-                },
-                {
-                    enabled: this.options.circle,
-                    handler: new L.Draw.Circle(map, this.options.circle),
-                    title: L.drawLocal.draw.toolbar.buttons.circle
-                },
-                {
-                    enabled: this.options.markertooltip,
-                    handler: new L.Draw.MarkerToolTip(map, { icon: icon_alt}),
-                    title: 'Place marker with tooltip'
-                }
-            ];
-        }
-    });
-
-    var locale = tilesets.locale;
-    var localeOptions = tilesets.localeOptions;
-    var baseMaps = tilesets.baseMaps;
 
     function init_map(url) {
 
@@ -109,7 +56,11 @@ module.exports = (function() {
         var allowedShapes = {
             polyline: false,
             polygon: false,
-            markertooltip: true,
+            markertooltip: {
+                repeatMode: true,
+                editing: true,
+                icon: icon_alt
+            },
             rectangle: {
                 clickable: false
             },
@@ -164,4 +115,5 @@ module.exports = (function() {
         localeOptions: localeOptions,
         map: _map
     };
+
 })();

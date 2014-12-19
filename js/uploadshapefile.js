@@ -19,9 +19,9 @@ module.exports = function() {
     function loadPoints(geojson) {
     
         // draws markers
-        function drawPoint(lat, lng, name, type) {
+        function drawPoint(lat, lng, name, props) {
             var marker = new L.marker([lat, lng], {
-                title: name,
+                title: JSON.stringify(props, null, 2),
                 alt: name,
                 icon: icon_alt,
                 riseOnHover: true
@@ -72,7 +72,7 @@ module.exports = function() {
                     }
     
                     map.setView([coords[1], coords[0]], 14);
-                    var layer = drawPoint(coords[1], coords[0], map_name, map_name)
+                    var layer = drawPoint(coords[1], coords[0], map_name, feature.properties);
                 } else if (type === "Polygon") {
 
                     if (projection) {

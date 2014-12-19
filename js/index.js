@@ -1,8 +1,6 @@
 var L = require('leaflet');
 require('leaflet-draw');
 
-var Proj4js = require('proj4');
-
 var editor = require('./editor.js');
 
 var basechange = require('./baselayerchange.js');
