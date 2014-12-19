@@ -15,7 +15,12 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
         for feature in features:
             coords = feature['geometry']['coordinates']
             shp_w.point(float(coords[0]), float(coords[1]))
-            values = [str(feature['properties'][prop]) for prop in props] 
+            values = [str(feature['properties'][prop]) 
+                        if prop in feature['properties'].keys() 
+                        else "" 
+                        for prop in props
+                      ]
+
             shp_w.record(*values)
     
     shp_w = None
@@ -24,7 +29,11 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
         return;
 
     first_feature = features[0]
-    first_feature_props = [str(key) for key in first_feature['properties'].keys()]
+    props = set()
+    for feature in features:
+        for key in feature.keys():
+            props.add(str(key))
+    
     
     # Determine what the geometry is to record a shapefile
     shp_type = first_feature['geometry']['type']
@@ -33,7 +42,7 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
     if shp_type == "Point":
         
         shp_w = shapefile.Writer(shapefile.POINT)
-        writePoint(shp_w, features, first_feature_props)
+        writePoint(shp_w, features, list(props))
 
     elif shp_type == "LineString":
         pass
