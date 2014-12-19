@@ -17,7 +17,7 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
             shp_w.point(float(coords[0]), float(coords[1]))
             values = [str(feature['properties'][prop]) 
                         if prop in feature['properties'].keys() 
-                        else "" 
+                        else None 
                         for prop in props
                       ]
 
@@ -31,7 +31,7 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
     first_feature = features[0]
     props = set()
     for feature in features:
-        for key in feature.keys():
+        for key in feature['properties'].keys():
             props.add(str(key))
     
     
