@@ -20,6 +20,7 @@ module.exports = function() {
     
         // draws markers
         function drawPoint(lat, lng, name, props) {
+            delete props.projection;
             var marker = new L.marker([lat, lng], {
                 title: JSON.stringify(props, null, 2),
                 alt: name,
@@ -27,6 +28,7 @@ module.exports = function() {
                 riseOnHover: true
             });
     
+            marker.metadata = props;
             return marker;
         };
     
