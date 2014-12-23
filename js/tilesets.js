@@ -45,10 +45,10 @@ var l_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/W
 
 /* Active Layers */
 var baseMaps = {
-    //"myanmar": myanmar_layer,
-    //"myanmar_feb": myanmar_feb_layer,
-    //"myanmar_jun": myanmar_jun_layer,
-    //"myanmar_jan": myanmar_jan_layer,
+    "myanmar": myanmar_layer,
+    "myanmar_feb": myanmar_feb_layer,
+    "myanmar_jun": myanmar_jun_layer,
+    "myanmar_jan": myanmar_jan_layer,
     "nasa_landsat": l_layer,
     "google_maps": g_layer,
 };

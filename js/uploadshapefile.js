@@ -154,13 +154,13 @@ module.exports = function() {
                 var props = {name: map_name, layer: editor.localeOptions[map_name].layer}
                 //var event = new L.LayersControlEvent("baselayerchange", props);
                 //document.dispatchEvent(event);
+                //XXX: THIS
             }
 
             loadPoints(geojson);
             
-            logger.innerHTML += "<p id='loaded'> Loaded: "
-                + length + " for layer " + map_name
-                + "</p>";
+            logger.innerHTML += "<p id='loadlabel'> Loaded </p>"
+                + "<p id='loaded'>"+ length + " to active layer " + editor.locale + "</p>";
         })
         .send(fd);
 };

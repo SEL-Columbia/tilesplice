@@ -46,10 +46,10 @@ if __name__ == '__main__':
     geojson = shapefileToGeojson(shp, dbf=dbf);
     print geojson
 
-    shx = open("counts.shx");
-    shp = open("counts.shp");
-    dbf = open("counts.dbf");
-    prj = open("counts.prj");
+    shx = open("Pollin-Voronoi.shx");
+    shp = open("Pollin-Voronoi.shp");
+    dbf = open("Pollin-Voronoi.dbf");
+    prj = open("Pollin-Voronoi.prj");
     #geojson = shapefileToGeojson(shp, shx, dbf);
     geojson = shapefileToGeojson(shp, shx, dbf, prj);
     print geojson

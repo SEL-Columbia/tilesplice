@@ -59,9 +59,12 @@ module.exports = function(e) {
                 .create_request("POST", "/download.geojson?raster="+curTiles, true)
                 .set_response_handler(function() {
                     var url = "http://" + window.location.host + "/" + req.response_text();
-                    logger.innerHTML += "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
-                    logger.innerHTML += "<a href="+url+"shx id='shps'>"+url+"shx</a>";
-                    logger.innerHTML += "<a href="+url+"shp id='shps'>"+url+"shp</a>";
+                    logger.innerHTML += "<p id='shplabel'> DBF </p>" 
+                        + "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
+                    logger.innerHTML += "<p id='shplabel'> SHX </p>" 
+                        + "<a href="+url+"shx id='shps'>"+url+"shx</a>";
+                    logger.innerHTML += "<p id='shplabel'> SHP </p>" 
+                        + "<a href="+url+"shp id='shps'>"+url+"shp</a>";
                 })
                 .send(JSON.stringify(pointsGeoJson));
             }
@@ -81,10 +84,11 @@ module.exports = function(e) {
            
         // shutdown geotiff creation if just a web tileset
         if (isWeb) {
-            var popup = L.popup({closeOnClick: false})
+            var popup = L.popup({closeOnClick: true})
                 .setLatLng([(ptop.lat + pbot.lat)/2, (ptop.lng + pbot.lng)/2])
                 .setContent('<p> Clipping from web tilesets not enabled </p>')
                 .addTo(map);
+
             return;
         }
 
@@ -117,7 +121,8 @@ module.exports = function(e) {
                                 + req.response_text()
                                 + '</a>');
                 var url = "http://" + window.location.host + "/" + req.response_text();
-                logger.innerHTML += "<a href="+url+" id='clip'>" + url + "</a>";
+                logger.innerHTML += "<p id='geolabel'> GeoTiff </p>" 
+                    + "<a href="+url+" id='clip'>" + url + "</a>";
 
             })
             .send();

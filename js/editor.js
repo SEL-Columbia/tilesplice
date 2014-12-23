@@ -94,6 +94,7 @@ module.exports = (function() {
         var input = document.createElement("INPUT");
         input.setAttribute("type", "file");
         input.setAttribute("name", "uploads[]");
+        input.setAttribute("class", "leaflet-container leaflet-retina");
         input.name = "uploads[]";
         input.setAttribute("multiple", true);
         inputdiv.appendChild(input);

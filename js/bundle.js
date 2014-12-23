@@ -84,9 +84,12 @@ module.exports = function(e) {
                 .create_request("POST", "/download.geojson?raster="+curTiles, true)
                 .set_response_handler(function() {
                     var url = "http://" + window.location.host + "/" + req.response_text();
-                    logger.innerHTML += "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
-                    logger.innerHTML += "<a href="+url+"shx id='shps'>"+url+"shx</a>";
-                    logger.innerHTML += "<a href="+url+"shp id='shps'>"+url+"shp</a>";
+                    logger.innerHTML += "<p id='shplabel'> DBF </p>" 
+                        + "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
+                    logger.innerHTML += "<p id='shplabel'> SHX </p>" 
+                        + "<a href="+url+"shx id='shps'>"+url+"shx</a>";
+                    logger.innerHTML += "<p id='shplabel'> SHP </p>" 
+                        + "<a href="+url+"shp id='shps'>"+url+"shp</a>";
                 })
                 .send(JSON.stringify(pointsGeoJson));
             }
@@ -106,10 +109,11 @@ module.exports = function(e) {
            
         // shutdown geotiff creation if just a web tileset
         if (isWeb) {
-            var popup = L.popup({closeOnClick: false})
+            var popup = L.popup({closeOnClick: true})
                 .setLatLng([(ptop.lat + pbot.lat)/2, (ptop.lng + pbot.lng)/2])
                 .setContent('<p> Clipping from web tilesets not enabled </p>')
                 .addTo(map);
+
             return;
         }
 
@@ -142,7 +146,8 @@ module.exports = function(e) {
                                 + req.response_text()
                                 + '</a>');
                 var url = "http://" + window.location.host + "/" + req.response_text();
-                logger.innerHTML += "<a href="+url+" id='clip'>" + url + "</a>";
+                logger.innerHTML += "<p id='geolabel'> GeoTiff </p>" 
+                    + "<a href="+url+" id='clip'>" + url + "</a>";
 
             })
             .send();
@@ -269,6 +274,7 @@ module.exports = (function() {
         var input = document.createElement("INPUT");
         input.setAttribute("type", "file");
         input.setAttribute("name", "uploads[]");
+        input.setAttribute("class", "leaflet-container leaflet-retina");
         input.name = "uploads[]";
         input.setAttribute("multiple", true);
         inputdiv.appendChild(input);
@@ -496,10 +502,10 @@ var l_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/W
 
 /* Active Layers */
 var baseMaps = {
-    //"myanmar": myanmar_layer,
-    //"myanmar_feb": myanmar_feb_layer,
-    //"myanmar_jun": myanmar_jun_layer,
-    //"myanmar_jan": myanmar_jan_layer,
+    "myanmar": myanmar_layer,
+    "myanmar_feb": myanmar_feb_layer,
+    "myanmar_jun": myanmar_jun_layer,
+    "myanmar_jan": myanmar_jan_layer,
     "nasa_landsat": l_layer,
     "google_maps": g_layer,
 };
@@ -595,6 +601,7 @@ module.exports = function() {
     
         // draws markers
         function drawPoint(lat, lng, name, props) {
+            delete props.projection;
             var marker = new L.marker([lat, lng], {
                 title: JSON.stringify(props, null, 2),
                 alt: name,
@@ -602,6 +609,7 @@ module.exports = function() {
                 riseOnHover: true
             });
     
+            marker.metadata = props;
             return marker;
         };
     
@@ -727,13 +735,13 @@ module.exports = function() {
                 var props = {name: map_name, layer: editor.localeOptions[map_name].layer}
                 //var event = new L.LayersControlEvent("baselayerchange", props);
                 //document.dispatchEvent(event);
+                //XXX: THIS
             }
 
             loadPoints(geojson);
             
-            logger.innerHTML += "<p id='loaded'> Loaded: "
-                + length + " for layer " + map_name
-                + "</p>";
+            logger.innerHTML += "<p id='loadlabel'> Loaded </p>"
+                + "<p id='loaded'>"+ length + " to active layer " + editor.locale + "</p>";
         })
         .send(fd);
 };

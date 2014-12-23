@@ -1,4 +1,10 @@
-#body {
+html {
+    width: 100%;
+    height: 100%;
+	font-family: Consolas, monaco, monospace;
+}
+
+body {
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -8,26 +14,31 @@
 #map {
     height: 100%;
     width: 80%;
-    float: left;
-    margin-left: 2%;
-    margin-right: 1%;
+    position: absolute;
 }
 
 #labels {
-    height: 100%;
-    width: 14%;
-    float: right;
-    margin-left: 1%;
-    margin-right: 2%;
+    height: 99%;
+    width: 19.5%;
+    position: absolute;
+    margin: 0px auto;
+    left: 80%;
+    background: rgb(240, 240, 240);
+    background: rgba(240, 240, 240, 0.5);
+    -moz-box-shadow: 10px 10px 5px #888888; 
+    -webkit-box-shadow: 10px 10px 5px #888888; 
+    box-shadow: 10px 10px 5px #888888; 
+    overflow-y: scroll;
 }
+
 
 #upload {
     position: absolute;
     bottom: 0;
-    width: 14%;
     height: 20px;
     background: green;
     margin-bottom: 20px;
+    margin-left: 10px;
 }
 
 #logger {
@@ -37,22 +48,90 @@
     word-wrap: break-word;
 }
 
-#shps {
+#shps , #shplabel{
     color: blue;
     display: block;
-    padding: 2px 0px;
+
+    background: rgb(200, 200, 255);
+    background: rgba(200, 200, 255, 0.5);
+
+    width: 92%;
+    padding-left: 8%;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    margin: 0px;
+
+    -moz-box-shadow: 0 0 5px #888;
+    -webkit-box-shadow: 0 0 5px#888;
+    box-shadow: 0 0 5px #888;
 }
 
-#loaded {
+#shplabel {
+
+    color: black;
+    background: rgb(150, 150, 255);
+    background: rgba(150, 150, 255, 0.5);
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 95%;
+    padding-left: 5%;
+}
+
+#loaded , #loadlabel{
     color: green;
     display: block;
-    padding: 2px 0px;
+
+    background: rgb(200, 255, 200);
+    background: rgba(200, 255, 200, 0.5);
+
+    width: 92%;
+    padding-left: 8%;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    margin: 0px;
+
+    -moz-box-shadow: 0 0 5px #888;
+    -webkit-box-shadow: 0 0 5px#888;
+    box-shadow: 0 0 5px #888;
 }
 
-#clip {
+#loadlabel{
+
+    color: black;
+    background: rgb(150, 255, 150);
+    background: rgba(150, 255, 150, 0.5);
+    padding-left: 5%;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 95%;
+}
+
+#clip , #geolabel{
     color: red;
     display: block;
-    padding: 2px 0px;
+
+    background: rgb(255, 200, 200);
+    background: rgba(255, 200, 200, 0.5);
+
+    width: 92%;
+    padding-left: 8%;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    margin: 0px;
+
+    -moz-box-shadow: 0 0 5px #888;
+    -webkit-box-shadow: 0 0 5px#888;
+    box-shadow: 0 0 5px #888;
+}
+
+#geolabel{
+    color: black;
+    padding-left: 5%;
+    background: rgb(255, 150, 150);
+    background: rgba(255, 150, 150, 0.5);
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 95%;
 }
 
 .leaflet-draw-toolbar .leaflet-draw-draw-markertooltip {
@@ -61,4 +140,19 @@
 .leaflet-retina .leaflet-draw-toolbar a {
     background-image: url('images/spritesheet-2x.png');
     background-size: 300px 30px !important;
+}
+
+#labels h3 {
+    color: rgb(75,75,75);
+    background: rgb(200, 200, 200);
+    background: rgba(200, 200, 200, 0.5);
+    -moz-box-shadow: 5px 5px 2px #888888; 
+    -webkit-box-shadow: 5px 5px 2px #888888; 
+    box-shadow: 5px 5px 2px #888888; 
+    width: 95%;
+    padding-left: 5%;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    margin: 0px;
+
 }
