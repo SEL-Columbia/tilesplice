@@ -3,8 +3,13 @@ import json
 
 def geojsonToShape(geojson, shpfile, map_name="global"):
 
-    def writePoly(shp_w, features, hasMeta):
-        pass
+    def writePoly(shp_w, features):
+        shp_w.field('map'); #TODO remove but apparently you need a field of pyshp breaks
+        for feature in features:
+            coords = feature['geometry']['coordinates'][0] #TODO loop through all polys
+            coordsf = [[float(c[0]), float(c[1])] for c in coords];
+            shp_w.poly(parts=[coordsf])
+            shp_w.record(map_name);
 
     ''' 
     Generate the shape file from the point data
@@ -47,7 +52,10 @@ def geojsonToShape(geojson, shpfile, map_name="global"):
     elif shp_type == "LineString":
         pass
     elif shp_type == "Polygon":
-        pass
+
+        shp_w = shapefile.Writer(shapefile.POLYGON)
+        writePoly(shp_w, features)
+
     elif shp_type == "Polyline":
         pass
     elif shp_type == "MultiPoint":

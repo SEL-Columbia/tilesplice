@@ -27,6 +27,11 @@ module.exports = (function() {
                     title: L.drawLocal.draw.toolbar.buttons.marker
                 },
                 {
+                    enabled: this.options.markertooltip,
+                    handler: new L.Draw.MarkerToolTip(map, this.options.markertooltip),
+                    title: 'Place marker with tooltip'
+                },
+                {
                     enabled: this.options.polyline,
                     handler: new L.Draw.Polyline(map, this.options.polyline),
                     title: L.drawLocal.draw.toolbar.buttons.polyline
@@ -46,11 +51,6 @@ module.exports = (function() {
                     handler: new L.Draw.Circle(map, this.options.circle),
                     title: L.drawLocal.draw.toolbar.buttons.circle
                 },
-                {
-                    enabled: this.options.markertooltip,
-                    handler: new L.Draw.MarkerToolTip(map, this.options.markertooltip),
-                    title: 'Place marker with tooltip'
-                }
             ];
         }
     });

@@ -23,7 +23,7 @@ module.exports = function(e) {
     layer.metadata = {};
     layer.metadata['map'] = editor.locale;
 
-    var dump_marks = function(top_x, top_y, bot_x, bot_y) {
+    function dump_marks(top_x, top_y, bot_x, bot_y) {
     
         var pointsGeoJson = drawGroup.toGeoJSON();
         var validFeatures = [];
@@ -34,9 +34,15 @@ module.exports = function(e) {
     
         // loop though featureGroup geojson, record points that are within bounds
         for (i=0; i < pointsGeoJson.features.length; i++) {
+            var type = pointsGeoJson.features[i].geometry.type;
+
+            // Only dump points
+            if (type !== "Point") {
+                continue;
+            }
+
             var lat = pointsGeoJson.features[i].geometry.coordinates[1];
             var lng = pointsGeoJson.features[i].geometry.coordinates[0];
-            var type = pointsGeoJson.features[i].geometry.type;
     
             if  ((lng < bot_x && lng > top_x) &&  (lat < top_y && lat > bot_y)) {
     
@@ -59,15 +65,38 @@ module.exports = function(e) {
                 .create_request("POST", "/download.geojson?raster="+curTiles, true)
                 .set_response_handler(function() {
                     var url = "http://" + window.location.host + "/" + req.response_text();
-                    logger.innerHTML += "<p id='shplabel'> DBF </p>" 
+                    logger.innerHTML += "<p id='shplabel'> Point DBF </p>" 
                         + "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
-                    logger.innerHTML += "<p id='shplabel'> SHX </p>" 
+                    logger.innerHTML += "<p id='shplabel'> Point SHX </p>" 
                         + "<a href="+url+"shx id='shps'>"+url+"shx</a>";
-                    logger.innerHTML += "<p id='shplabel'> SHP </p>" 
+                    logger.innerHTML += "<p id='shplabel'> Point SHP </p>" 
                         + "<a href="+url+"shp id='shps'>"+url+"shp</a>";
                 })
                 .send(JSON.stringify(pointsGeoJson));
             }
+    };
+
+    function dump_poly(polyGeoJson) {
+    
+        var curTiles = editor.locale;
+        polyGeoJson = {'type': 'FeatureCollection', 'features': [polyGeoJson] };
+        // Set up ajax request, update console with shp file location on success;
+        console.log(polyGeoJson);
+        console.log(JSON.stringify(polyGeoJson));
+        window.p = polyGeoJson;
+        var req = new Request();
+        req
+            .create_request("POST", "/download.geojson?raster="+curTiles, true)
+            .set_response_handler(function() {
+                var url = "http://" + window.location.host + "/" + req.response_text();
+                logger.innerHTML += "<p id='shplabel'> Polygon DBF </p>" 
+                    + "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
+                logger.innerHTML += "<p id='shplabel'> Polygon SHX </p>" 
+                    + "<a href="+url+"shx id='shps'>"+url+"shx</a>";
+                logger.innerHTML += "<p id='shplabel'> Polygon SHP </p>" 
+                    + "<a href="+url+"shp id='shps'>"+url+"shp</a>";
+            })
+            .send(JSON.stringify(polyGeoJson));
     };
 
     if (type === 'rectangle') {
@@ -127,7 +156,7 @@ module.exports = function(e) {
             })
             .send();
 
-        map.addLayer(layer); //XXX: dont add this layer to the map directly
+        drawGroup.addLayer(layer); //XXX: dont add this layer to the map directly
     } else if (type === 'marker') {
         // just setting points
         drawGroup.addLayer(layer);
@@ -136,7 +165,6 @@ module.exports = function(e) {
         var counter = 0;
         var metadata = prompt("Metadata:", "");
         while(metadata) { 
-            console.log(metadata, counter);
             layer.metadata['meta'+counter++] = metadata;
             metadata = prompt("Metadata:", "");
         }
@@ -144,8 +172,10 @@ module.exports = function(e) {
         layer.options.title = JSON.stringify(layer.metadata, null, 2); 
         drawGroup.addLayer(layer);
 
-    } else if (type === 'polyline') {
-        alert('boo');
+    } else if (type === 'polygon') {
+        drawGroup.addLayer(layer);
+        dump_poly(layer.toGeoJSON());
+        // dump?
     } else {
         console.log(type);
     };

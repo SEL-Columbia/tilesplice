@@ -43,6 +43,7 @@ module.exports = function() {
             //console.log(latlngs);
             window.pts = latlngs;
             var poly = new L.polygon(latlngs, {
+                color: "#FF9900",
             });
 
             return poly;

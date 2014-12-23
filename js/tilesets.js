@@ -34,14 +34,22 @@ var myanmar_jan_layer = L.tileLayer('../myanmar_jan/{z}/{x}/{y}.png', {
 // Web layers
 var g_layer = L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         minZoom: 1,
-        maxZoom: 18,
+        maxZoom: 21,
+        attribution: 'google',
 })
 
 var l_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         minZoom: 1,
-        maxZoom: 18,
+        maxZoom: 17,
+        attribution: 'nasa',
 })
 
+var osmAttrib='Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
+var o_layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        minZoom: 1, 
+        maxZoom: 18, 
+        attribution: osmAttrib
+});
 
 /* Active Layers */
 var baseMaps = {
@@ -51,6 +59,7 @@ var baseMaps = {
     "myanmar_jan": myanmar_jan_layer,
     "nasa_landsat": l_layer,
     "google_maps": g_layer,
+    "osm": o_layer,
 };
 
 // Add in our projection
@@ -108,6 +117,16 @@ var localeOptions = {
 
     'google_maps': {
         layer: g_layer,
+        web: true,
+        src: new Proj4js.Proj('EPSG:32647'),
+        dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new Array(),
+        cen: [20.941, 96.090],
+        zom: 12
+    },
+
+    'osm': {
+        layer: o_layer,
         web: true,
         src: new Proj4js.Proj('EPSG:32647'),
         dest: new Proj4js.Proj('EPSG:32647'),

@@ -48,7 +48,7 @@ module.exports = function(e) {
     layer.metadata = {};
     layer.metadata['map'] = editor.locale;
 
-    var dump_marks = function(top_x, top_y, bot_x, bot_y) {
+    function dump_marks(top_x, top_y, bot_x, bot_y) {
     
         var pointsGeoJson = drawGroup.toGeoJSON();
         var validFeatures = [];
@@ -59,9 +59,15 @@ module.exports = function(e) {
     
         // loop though featureGroup geojson, record points that are within bounds
         for (i=0; i < pointsGeoJson.features.length; i++) {
+            var type = pointsGeoJson.features[i].geometry.type;
+
+            // Only dump points
+            if (type !== "Point") {
+                continue;
+            }
+
             var lat = pointsGeoJson.features[i].geometry.coordinates[1];
             var lng = pointsGeoJson.features[i].geometry.coordinates[0];
-            var type = pointsGeoJson.features[i].geometry.type;
     
             if  ((lng < bot_x && lng > top_x) &&  (lat < top_y && lat > bot_y)) {
     
@@ -84,15 +90,38 @@ module.exports = function(e) {
                 .create_request("POST", "/download.geojson?raster="+curTiles, true)
                 .set_response_handler(function() {
                     var url = "http://" + window.location.host + "/" + req.response_text();
-                    logger.innerHTML += "<p id='shplabel'> DBF </p>" 
+                    logger.innerHTML += "<p id='shplabel'> Point DBF </p>" 
                         + "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
-                    logger.innerHTML += "<p id='shplabel'> SHX </p>" 
+                    logger.innerHTML += "<p id='shplabel'> Point SHX </p>" 
                         + "<a href="+url+"shx id='shps'>"+url+"shx</a>";
-                    logger.innerHTML += "<p id='shplabel'> SHP </p>" 
+                    logger.innerHTML += "<p id='shplabel'> Point SHP </p>" 
                         + "<a href="+url+"shp id='shps'>"+url+"shp</a>";
                 })
                 .send(JSON.stringify(pointsGeoJson));
             }
+    };
+
+    function dump_poly(polyGeoJson) {
+    
+        var curTiles = editor.locale;
+        polyGeoJson = {'type': 'FeatureCollection', 'features': [polyGeoJson] };
+        // Set up ajax request, update console with shp file location on success;
+        console.log(polyGeoJson);
+        console.log(JSON.stringify(polyGeoJson));
+        window.p = polyGeoJson;
+        var req = new Request();
+        req
+            .create_request("POST", "/download.geojson?raster="+curTiles, true)
+            .set_response_handler(function() {
+                var url = "http://" + window.location.host + "/" + req.response_text();
+                logger.innerHTML += "<p id='shplabel'> Polygon DBF </p>" 
+                    + "<a href="+url+"dbf id='shps'>"+url+"dbf</a>";
+                logger.innerHTML += "<p id='shplabel'> Polygon SHX </p>" 
+                    + "<a href="+url+"shx id='shps'>"+url+"shx</a>";
+                logger.innerHTML += "<p id='shplabel'> Polygon SHP </p>" 
+                    + "<a href="+url+"shp id='shps'>"+url+"shp</a>";
+            })
+            .send(JSON.stringify(polyGeoJson));
     };
 
     if (type === 'rectangle') {
@@ -152,7 +181,7 @@ module.exports = function(e) {
             })
             .send();
 
-        map.addLayer(layer); //XXX: dont add this layer to the map directly
+        drawGroup.addLayer(layer); //XXX: dont add this layer to the map directly
     } else if (type === 'marker') {
         // just setting points
         drawGroup.addLayer(layer);
@@ -161,7 +190,6 @@ module.exports = function(e) {
         var counter = 0;
         var metadata = prompt("Metadata:", "");
         while(metadata) { 
-            console.log(metadata, counter);
             layer.metadata['meta'+counter++] = metadata;
             metadata = prompt("Metadata:", "");
         }
@@ -169,8 +197,10 @@ module.exports = function(e) {
         layer.options.title = JSON.stringify(layer.metadata, null, 2); 
         drawGroup.addLayer(layer);
 
-    } else if (type === 'polyline') {
-        alert('boo');
+    } else if (type === 'polygon') {
+        drawGroup.addLayer(layer);
+        dump_poly(layer.toGeoJSON());
+        // dump?
     } else {
         console.log(type);
     };
@@ -210,12 +240,12 @@ module.exports = (function() {
         });
 
         // landsat
-        var bg_url = url || 'http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        var bg_layer = L.tileLayer(bg_url, {
-                minZoom: 1,
-                maxZoom: 18,
-        });
-        bg_layer.addTo(map);
+        //var bg_url = url || 'http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        //var bg_layer = L.tileLayer(bg_url, {
+        //        minZoom: 1,
+        //        maxZoom: 17,
+        //});
+        //bg_layer.addTo(map);
 
         // start layer (is in baseMaps)
         localeOptions[locale].layer.addTo(map);
@@ -234,15 +264,23 @@ module.exports = (function() {
 
         // Initialise the draw control and pass it the FeatureGroup of editable layers
         var allowedShapes = {
+            polygon: {
+                allowIntersection: false,
+                shapeOptions: {
+                    color: "#0000FF", 
+                },
+            },
             polyline: false,
-            polygon: false,
             markertooltip: {
                 repeatMode: true,
                 editing: true,
                 icon: icon_alt
             },
             rectangle: {
-                clickable: false
+                shapeOptions: {
+                    clickable: false
+                },
+                editing: false,
             },
             circle: false,
             marker: {
@@ -374,6 +412,11 @@ module.exports = (function() {
                     title: L.drawLocal.draw.toolbar.buttons.marker
                 },
                 {
+                    enabled: this.options.markertooltip,
+                    handler: new L.Draw.MarkerToolTip(map, this.options.markertooltip),
+                    title: 'Place marker with tooltip'
+                },
+                {
                     enabled: this.options.polyline,
                     handler: new L.Draw.Polyline(map, this.options.polyline),
                     title: L.drawLocal.draw.toolbar.buttons.polyline
@@ -393,11 +436,6 @@ module.exports = (function() {
                     handler: new L.Draw.Circle(map, this.options.circle),
                     title: L.drawLocal.draw.toolbar.buttons.circle
                 },
-                {
-                    enabled: this.options.markertooltip,
-                    handler: new L.Draw.MarkerToolTip(map, this.options.markertooltip),
-                    title: 'Place marker with tooltip'
-                }
             ];
         }
     });
@@ -491,14 +529,22 @@ var myanmar_jan_layer = L.tileLayer('../myanmar_jan/{z}/{x}/{y}.png', {
 // Web layers
 var g_layer = L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         minZoom: 1,
-        maxZoom: 18,
+        maxZoom: 21,
+        attribution: 'google',
 })
 
 var l_layer = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         minZoom: 1,
-        maxZoom: 18,
+        maxZoom: 17,
+        attribution: 'nasa',
 })
 
+var osmAttrib='Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
+var o_layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        minZoom: 1, 
+        maxZoom: 18, 
+        attribution: osmAttrib
+});
 
 /* Active Layers */
 var baseMaps = {
@@ -508,6 +554,7 @@ var baseMaps = {
     "myanmar_jan": myanmar_jan_layer,
     "nasa_landsat": l_layer,
     "google_maps": g_layer,
+    "osm": o_layer,
 };
 
 // Add in our projection
@@ -572,6 +619,16 @@ var localeOptions = {
         cen: [20.941, 96.090],
         zom: 12
     },
+
+    'osm': {
+        layer: o_layer,
+        web: true,
+        src: new Proj4js.Proj('EPSG:32647'),
+        dest: new Proj4js.Proj('EPSG:32647'),
+        draw: new Array(),
+        cen: [20.941, 96.090],
+        zom: 12
+    },
 };
 
 exports.locale = locale;
@@ -624,6 +681,7 @@ module.exports = function() {
             //console.log(latlngs);
             window.pts = latlngs;
             var poly = new L.polygon(latlngs, {
+                color: "#FF9900",
             });
 
             return poly;

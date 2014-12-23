@@ -30,12 +30,12 @@ module.exports = (function() {
         });
 
         // landsat
-        var bg_url = url || 'http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        var bg_layer = L.tileLayer(bg_url, {
-                minZoom: 1,
-                maxZoom: 18,
-        });
-        bg_layer.addTo(map);
+        //var bg_url = url || 'http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        //var bg_layer = L.tileLayer(bg_url, {
+        //        minZoom: 1,
+        //        maxZoom: 17,
+        //});
+        //bg_layer.addTo(map);
 
         // start layer (is in baseMaps)
         localeOptions[locale].layer.addTo(map);
@@ -54,15 +54,23 @@ module.exports = (function() {
 
         // Initialise the draw control and pass it the FeatureGroup of editable layers
         var allowedShapes = {
+            polygon: {
+                allowIntersection: false,
+                shapeOptions: {
+                    color: "#0000FF", 
+                },
+            },
             polyline: false,
-            polygon: false,
             markertooltip: {
                 repeatMode: true,
                 editing: true,
                 icon: icon_alt
             },
             rectangle: {
-                clickable: false
+                shapeOptions: {
+                    clickable: false
+                },
+                editing: false,
             },
             circle: false,
             marker: {
