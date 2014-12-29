@@ -106,9 +106,6 @@ module.exports = function(e) {
         var curTiles = editor.locale;
         polyGeoJson = {'type': 'FeatureCollection', 'features': [polyGeoJson] };
         // Set up ajax request, update console with shp file location on success;
-        console.log(polyGeoJson);
-        console.log(JSON.stringify(polyGeoJson));
-        window.p = polyGeoJson;
         var req = new Request();
         req
             .create_request("POST", "/download.geojson?raster="+curTiles, true)
@@ -548,10 +545,10 @@ var o_layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 /* Active Layers */
 var baseMaps = {
-    "myanmar": myanmar_layer,
-    "myanmar_feb": myanmar_feb_layer,
-    "myanmar_jun": myanmar_jun_layer,
-    "myanmar_jan": myanmar_jan_layer,
+    //"myanmar": myanmar_layer,
+    //"myanmar_feb": myanmar_feb_layer,
+    //"myanmar_jun": myanmar_jun_layer,
+    //"myanmar_jan": myanmar_jan_layer,
     "nasa_landsat": l_layer,
     "google_maps": g_layer,
     "osm": o_layer,
